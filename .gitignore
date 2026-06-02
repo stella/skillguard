@@ -1,0 +1,31 @@
+# Dependencies
+node_modules
+
+# Build outputs
+dist
+build
+coverage
+*.tsbuildinfo
+
+# Local env files: block all .env* by default, allow examples.
+.env*
+!.env.example
+!.env*.example
+
+# Tool caches
+.cache
+.turbo
+.oxlint-plugins
+
+# Test output
+test-results
+
+# Bun binary lockfile; commit text-based bun.lock instead.
+bun.lockb
+
+# Debug
+npm-debug.log*
+
+# Misc
+.DS_Store
+*.pem

@@ -1,0 +1,3 @@
+{
+  "extends": "@stll/typescript-config/bun.json"
+}

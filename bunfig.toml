@@ -1,0 +1,4 @@
+[install]
+linker = "hoisted"
+# 5-day quarantine: reject package versions published less than 5 days ago.
+minimumReleaseAge = 432_000

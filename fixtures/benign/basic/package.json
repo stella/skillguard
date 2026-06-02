@@ -1,0 +1,7 @@
+{
+  "name": "benign-basic-skill-fixture",
+  "version": "0.0.0",
+  "dependencies": {
+    "zod": "4.1.12"
+  }
+}

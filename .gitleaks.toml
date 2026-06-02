@@ -1,0 +1,4 @@
+title = "SkillGuard Gitleaks Configuration"
+
+[extend]
+useDefault = true

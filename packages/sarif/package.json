@@ -1,0 +1,54 @@
+{
+  "name": "@stll/skillguard-sarif",
+  "version": "0.1.0",
+  "description": "SARIF formatter for SkillGuard scan reports.",
+  "keywords": [
+    "agent-skills",
+    "sarif",
+    "scanner",
+    "security",
+    "skillguard"
+  ],
+  "homepage": "https://github.com/stella/skillguard#readme",
+  "bugs": {
+    "url": "https://github.com/stella/skillguard/issues"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stella/skillguard.git",
+    "directory": "packages/sarif"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "main": "dist/index.mjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsdown --entry src/index.ts --format esm --dts",
+    "clean": "git clean -xdf .cache dist node_modules",
+    "format": "oxfmt -c ../../.oxfmtrc.json .",
+    "lint": "oxlint -c ../../oxlint.config.ts .",
+    "lint:fix": "oxlint -c ../../oxlint.config.ts --fix .",
+    "test": "bun test src",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@stll/skillguard-core": "0.1.0"
+  },
+  "devDependencies": {
+    "@stll/typescript-config": "0.2.0"
+  }
+}

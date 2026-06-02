@@ -1,0 +1,67 @@
+{
+  "name": "@stll/skillguard",
+  "version": "0.1.0",
+  "description": "Local-first security scanner and policy gate for third-party Agent Skills.",
+  "keywords": [
+    "agent-skills",
+    "ai-agents",
+    "cli",
+    "policy",
+    "scanner",
+    "security",
+    "skillguard",
+    "tanstack-intent"
+  ],
+  "homepage": "https://github.com/stella/skillguard#readme",
+  "bugs": {
+    "url": "https://github.com/stella/skillguard/issues"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stella/skillguard.git",
+    "directory": "packages/cli"
+  },
+  "bin": {
+    "skillguard": "dist/index.mjs"
+  },
+  "files": [
+    "dist",
+    "skills"
+  ],
+  "type": "module",
+  "main": "dist/index.mjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsdown --entry src/index.ts --format esm --dts",
+    "clean": "git clean -xdf .cache dist node_modules",
+    "format": "oxfmt -c ../../.oxfmtrc.json .",
+    "lint": "oxlint -c ../../oxlint.config.ts .",
+    "lint:fix": "oxlint -c ../../oxlint.config.ts --fix .",
+    "intent:validate": "intent validate skills",
+    "skillguard": "bun src/index.ts",
+    "test": "bun test src",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@stll/skillguard-core": "0.1.0",
+    "@stll/skillguard-rules": "0.1.0",
+    "@stll/skillguard-sarif": "0.1.0",
+    "jszip": "3.10.1"
+  },
+  "devDependencies": {
+    "@stll/typescript-config": "0.2.0",
+    "@tanstack/intent": "0.0.41"
+  }
+}

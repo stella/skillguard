@@ -1,0 +1,51 @@
+{
+  "name": "@stll/skillguard-core",
+  "version": "0.1.0",
+  "description": "Portable TypeScript scanner engine for SkillGuard.",
+  "keywords": [
+    "agent-skills",
+    "policy",
+    "scanner",
+    "security",
+    "skillguard"
+  ],
+  "homepage": "https://github.com/stella/skillguard#readme",
+  "bugs": {
+    "url": "https://github.com/stella/skillguard/issues"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stella/skillguard.git",
+    "directory": "packages/core"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "main": "dist/index.mjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsdown --entry src/index.ts --format esm --dts",
+    "clean": "git clean -xdf .cache dist node_modules",
+    "format": "oxfmt -c ../../.oxfmtrc.json .",
+    "lint": "oxlint -c ../../oxlint.config.ts .",
+    "lint:fix": "oxlint -c ../../oxlint.config.ts --fix .",
+    "test": "bun test src",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@stll/typescript-config": "0.2.0"
+  }
+}

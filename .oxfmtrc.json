@@ -1,0 +1,31 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "ignorePatterns": [
+    "**/*.gen.*",
+    "**/*.min.*",
+    "**/.cache/**",
+    "**/dist/**"
+  ],
+  "printWidth": 80,
+  "sortImports": {
+    "customGroups": [
+      {
+        "groupName": "skillguard",
+        "elementNamePattern": ["@skillguard/**"]
+      }
+    ],
+    "groups": [
+      ["value-builtin", "value-external", "type-builtin", "type-external"],
+      "skillguard",
+      [
+        "value-parent",
+        "value-sibling",
+        "value-index",
+        "type-parent",
+        "type-sibling",
+        "type-index"
+      ]
+    ],
+    "newlinesBetween": true
+  }
+}

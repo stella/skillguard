@@ -1,0 +1,11 @@
+{
+  "extends": "@stll/typescript-config/bun.json",
+  "compilerOptions": {
+    "paths": {
+      "@stll/skillguard-core": ["../core/src/index.ts"],
+      "@stll/skillguard-rules": ["../rules/src/index.ts"],
+      "@stll/skillguard-sarif": ["../sarif/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts"]
+}
