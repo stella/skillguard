@@ -31,7 +31,9 @@
     "pack:verify": "bash scripts/verify-pack.sh",
     "secrets:check:staged": "bash scripts/check-staged-secrets.sh",
     "test": "turbo run test",
-    "typecheck": "turbo run typecheck"
+    "typecheck": "turbo run typecheck",
+    "sync-ai": "bash scripts/sync-ai-skills.sh",
+    "sync-ai:check": "bash scripts/sync-ai-skills.sh --check"
   },
   "devDependencies": {
     "@stll/oxlint-config": "0.2.0",
