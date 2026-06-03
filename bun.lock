@@ -5,8 +5,8 @@
     "": {
       "name": "skillguard",
       "devDependencies": {
-        "@stll/oxlint-config": "0.2.0",
-        "@stll/typescript-config": "0.2.0",
+        "@stll/oxlint-config": "^0.3.0",
+        "@stll/typescript-config": "^0.3.0",
         "@types/node": "25.5.2",
         "bun-types": "1.3.14",
         "eslint-plugin-sonarjs": "4.0.3",
@@ -34,7 +34,7 @@
         "jszip": "3.10.1",
       },
       "devDependencies": {
-        "@stll/typescript-config": "0.2.0",
+        "@stll/typescript-config": "^0.3.0",
         "@tanstack/intent": "0.0.41",
       },
     },
@@ -42,7 +42,7 @@
       "name": "@stll/skillguard-core",
       "version": "0.1.0",
       "devDependencies": {
-        "@stll/typescript-config": "0.2.0",
+        "@stll/typescript-config": "^0.3.0",
       },
     },
     "packages/rules": {
@@ -54,7 +54,7 @@
         "typescript": "6.0.3",
       },
       "devDependencies": {
-        "@stll/typescript-config": "0.2.0",
+        "@stll/typescript-config": "^0.3.0",
       },
     },
     "packages/sarif": {
@@ -64,7 +64,7 @@
         "@stll/skillguard-core": "0.1.0",
       },
       "devDependencies": {
-        "@stll/typescript-config": "0.2.0",
+        "@stll/typescript-config": "^0.3.0",
       },
     },
   },
@@ -331,7 +331,7 @@
 
     "@rolldown/pluginutils": ["@rolldown/pluginutils@1.0.1", "", {}, "sha512-2j9bGt5Jh8hj+vPtgzPtl72j0yRxHAyumoo6TNfAjsLB04UtpSvPbPcDcBMxz7n+9CYB0c1GxQFxYRg2jimqGw=="],
 
-    "@stll/oxlint-config": ["@stll/oxlint-config@0.2.0", "", { "peerDependencies": { "oxlint": ">=1.66.0", "oxlint-tsgolint": ">=0.23.0" } }, "sha512-QsxuGX4vpfiwOJgwShpkaXxc35aL/JZECNy8lF+GH6BrDV6wN/K2l76uyPQ3+VEAteAZD1so+17yeE+7oJ64lQ=="],
+    "@stll/oxlint-config": ["@stll/oxlint-config@0.3.0", "", { "peerDependencies": { "oxlint": ">=1.66.0", "oxlint-tsgolint": ">=0.23.0" } }, "sha512-kT4jS/0mgMejp5LUrQ7joHljyphqQr2kk2zGyuJGiJqFz7pHnp9lPJw5WmDyoOqEC34+jkHh0vPeNcZIEiXhog=="],
 
     "@stll/skillguard": ["@stll/skillguard@workspace:packages/cli"],
 
@@ -341,7 +341,7 @@
 
     "@stll/skillguard-sarif": ["@stll/skillguard-sarif@workspace:packages/sarif"],
 
-    "@stll/typescript-config": ["@stll/typescript-config@0.2.0", "", {}, "sha512-GDG/CT5ZXoyIa936NtDeUm77dSAgJfdoqRCra8dgyyHv2MuT0bDpEdJDceOXySRHIVb9qQzpIg/D71Fd92ZQ0Q=="],
+    "@stll/typescript-config": ["@stll/typescript-config@0.3.0", "", {}, "sha512-l0dj2IirCUKbSRSJ9Xwfu4vg8SjtfRlg5MEYGrx6lo/q2GLxS6MhFY+5hPOk36bJB99grqgmUtJql9Qg0WxIhw=="],
 
     "@tanstack/intent": ["@tanstack/intent@0.0.41", "", { "dependencies": { "cac": "^6.7.14", "jsonc-parser": "^3.3.1", "semver": "^7.7.4", "yaml": "2.8.3" }, "bin": { "intent": "dist/cli.mjs", "intent-library": "dist/intent-library.mjs" } }, "sha512-Psl+oDiidLvtctswkTQ1P6sQIihwrMLcdfQVfkLpO42oKwxWEr1lodWUHiOG5jFXsGwDDvpUv/WAdlmJF+yGpw=="],
 
