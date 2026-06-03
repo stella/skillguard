@@ -17,7 +17,7 @@ pre-commit:
       stage_fixed: true
     format:
       glob: "**/*.{ts,tsx,js,jsx,json,css,md}"
-      run: bun --bun oxfmt -c .oxfmtrc.json --no-error-on-unmatched-pattern {staged_files}
+      run: bun --bun oxfmt -c .oxfmtrc.json --no-error-on-unmatched-pattern {staged_files} "!.ai/**" "!.agents/**" "!.claude/**" "!AGENTS.md" "!CLAUDE.md" "!GEMINI.md"
       stage_fixed: true
 
 pre-push:
