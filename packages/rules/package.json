@@ -51,6 +51,6 @@
     "typescript": "6.0.3"
   },
   "devDependencies": {
-    "@stll/typescript-config": "0.2.0"
+    "@stll/typescript-config": "^0.3.0"
   }
 }

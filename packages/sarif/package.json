@@ -49,6 +49,6 @@
     "@stll/skillguard-core": "0.1.0"
   },
   "devDependencies": {
-    "@stll/typescript-config": "0.2.0"
+    "@stll/typescript-config": "^0.3.0"
   }
 }
