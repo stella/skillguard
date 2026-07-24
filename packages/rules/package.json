@@ -43,7 +43,7 @@
     "lint": "oxlint -c ../../oxlint.config.ts .",
     "lint:fix": "oxlint -c ../../oxlint.config.ts --fix .",
     "test": "bun test src",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "bun ../../scripts/tsc-native.ts --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "@lezer/python": "1.1.18",
@@ -51,6 +51,6 @@
     "typescript": "6.0.3"
   },
   "devDependencies": {
-    "@stll/typescript-config": "^0.3.0"
+    "@stll/typescript-config": "0.6.0"
   }
 }

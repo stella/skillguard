@@ -1,5 +1,13 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "ignore": ["fixtures/**"],
-  "ignoreDependencies": ["bun-types"]
+  "ignoreDependencies": ["@typescript/native", "bun-types"],
+  "workspaces": {
+    "packages/cli": {
+      "entry": ["src/**/*.test.ts"]
+    },
+    "packages/{core,rules,sarif}": {
+      "entry": ["src/index.ts", "src/**/*.test.ts"]
+    }
+  }
 }
