@@ -52,8 +52,7 @@ jobs:
           mkdir -p release-artifacts
           (
             cd "packages/${PACKAGE}"
-            npm pack --ignore-scripts \
-              --pack-destination "$GITHUB_WORKSPACE/release-artifacts"
+            bun pm pack --destination "$GITHUB_WORKSPACE/release-artifacts"
           )
 
       - name: Upload tarball

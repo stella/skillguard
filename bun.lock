@@ -31,9 +31,9 @@
         "skillguard": "dist/index.mjs",
       },
       "dependencies": {
-        "@stll/skillguard-core": "0.1.0",
-        "@stll/skillguard-rules": "0.1.0",
-        "@stll/skillguard-sarif": "0.1.0",
+        "@stll/skillguard-core": "workspace:*",
+        "@stll/skillguard-rules": "workspace:*",
+        "@stll/skillguard-sarif": "workspace:*",
         "jszip": "3.10.1",
       },
       "devDependencies": {
@@ -53,7 +53,7 @@
       "version": "0.1.0",
       "dependencies": {
         "@lezer/python": "1.1.18",
-        "@stll/skillguard-core": "0.1.0",
+        "@stll/skillguard-core": "workspace:*",
         "typescript": "6.0.3",
       },
       "devDependencies": {
@@ -64,7 +64,7 @@
       "name": "@stll/skillguard-sarif",
       "version": "0.1.0",
       "dependencies": {
-        "@stll/skillguard-core": "0.1.0",
+        "@stll/skillguard-core": "workspace:*",
       },
       "devDependencies": {
         "@stll/typescript-config": "0.6.0",

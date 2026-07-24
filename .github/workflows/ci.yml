@@ -59,6 +59,11 @@ jobs:
         with:
           bun-version-file: package.json
       - run: bun install --frozen-lockfile
+      # Bun validates the resolved graph but does not refresh or validate cached
+      # workspace self-versions. Release automation uses this same script in
+      # byte-preserving --write mode; CI keeps it in check-only mode.
+      - name: Lockfile workspace-version check
+        run: bun run check:lockfile-versions
       - run: bun run lint:ws
       - run: bun run typecheck
       - run: bun run lint

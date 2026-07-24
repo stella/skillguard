@@ -168,3 +168,13 @@ SkillGuard is a local-first security scanner and policy gate for Agent Skills.
 - `bun run test`
 - `bun run build`
 - `bun run pack:verify`
+
+### Release Lockfile Safety
+
+- Never delete or regenerate `bun.lock` to apply package version bumps. Run
+  `bun scripts/check-lockfile-workspace-versions.ts --write`, then
+  `bun install --frozen-lockfile`. The synchronizer is the sole owner of cached
+  workspace self-versions; dependency-graph changes belong in an explicit install.
+- Internal package dependencies must use `workspace:*`; never duplicate a sibling's
+  current version in another package manifest. Packaging rewrites the workspace
+  protocol to the release version.
