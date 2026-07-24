@@ -39,3 +39,6 @@ SkillGuard is a local-first security scanner and policy gate for Agent Skills.
 - Internal package dependencies must use `workspace:*`; never duplicate a sibling's
   current version in another package manifest. Packaging rewrites the workspace
   protocol to the release version.
+- `VERSION` is the sole automatic publish signal. Ordinary package-manifest,
+  lockfile, workflow, or tooling changes must not trigger registry writes; use the
+  explicit manual workflow only for an intentional recovery publish.
