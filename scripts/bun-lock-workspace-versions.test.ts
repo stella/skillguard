@@ -124,4 +124,19 @@ describe("bun.lock workspace self-version synchronization", () => {
     expect(publishWorkflow).not.toMatch(/\bnpm pack\b/);
     expect(packVerifier).not.toMatch(/\bnpm pack\b/);
   });
+
+  test("automatic publishing can only be triggered by the canonical VERSION file", async () => {
+    const publishWorkflow = await Bun.file(
+      join(ROOT, ".github/workflows/publish.yml"),
+    ).text();
+    const trigger = publishWorkflow.slice(
+      0,
+      publishWorkflow.indexOf("concurrency:"),
+    );
+
+    expect(trigger).toContain("push:");
+    expect(trigger).toContain("workflow_dispatch:");
+    expect(trigger).toContain("paths:\n      - VERSION");
+    expect(trigger).not.toContain("package.json");
+  });
 });
