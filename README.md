@@ -201,6 +201,12 @@ verification checklist.
 
 ## Development
 
+Typechecks always run the native TypeScript 7 compiler through
+`scripts/tsc-native.ts`. Classic TypeScript 6 remains installed only for the
+compiler API consumed by the rule parser and `eslint-plugin-sonarjs`; the
+toolchain policy test prevents package scripts from falling back to its
+`tsc` binary.
+
 ```sh
 bun install
 bun run lint:ws
