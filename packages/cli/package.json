@@ -55,9 +55,9 @@
     "typecheck": "bun ../../scripts/tsc-native.ts --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@stll/skillguard-core": "0.1.0",
-    "@stll/skillguard-rules": "0.1.0",
-    "@stll/skillguard-sarif": "0.1.0",
+    "@stll/skillguard-core": "workspace:*",
+    "@stll/skillguard-rules": "workspace:*",
+    "@stll/skillguard-sarif": "workspace:*",
     "jszip": "3.10.1"
   },
   "devDependencies": {

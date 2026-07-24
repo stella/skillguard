@@ -46,7 +46,7 @@
     "typecheck": "bun ../../scripts/tsc-native.ts --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@stll/skillguard-core": "0.1.0"
+    "@stll/skillguard-core": "workspace:*"
   },
   "devDependencies": {
     "@stll/typescript-config": "0.6.0"

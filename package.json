@@ -19,7 +19,8 @@
   "scripts": {
     "build": "turbo run build",
     "changeset": "changeset",
-    "changeset:version": "changeset version && rm -f bun.lock && bun install",
+    "changeset:version": "changeset version && bun scripts/check-lockfile-workspace-versions.ts --write && bun install --frozen-lockfile",
+    "check:lockfile-versions": "bun scripts/check-lockfile-workspace-versions.ts",
     "clean": "turbo run clean && git clean -xdf node_modules",
     "format": "turbo run format",
     "format:check": "turbo run format -- --check",
@@ -28,7 +29,7 @@
     "knip": "knip",
     "lint": "turbo run lint",
     "lint:fix": "turbo run lint:fix",
-    "lint:ws": "sherif -r unsync-similar-dependencies && bun test scripts/toolchain-policy.test.ts",
+    "lint:ws": "sherif -r unsync-similar-dependencies && bun test scripts/toolchain-policy.test.ts scripts/bun-lock-workspace-versions.test.ts",
     "pack:verify": "bash scripts/verify-pack.sh",
     "secrets:check:staged": "bash scripts/check-staged-secrets.sh",
     "test": "turbo run test",

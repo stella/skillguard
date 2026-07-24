@@ -41,10 +41,12 @@ NODE
 
 bun run build
 
-npm pack --json --pack-destination "$PACK_DIR" ./packages/core >/dev/null
-npm pack --json --pack-destination "$PACK_DIR" ./packages/rules >/dev/null
-npm pack --json --pack-destination "$PACK_DIR" ./packages/sarif >/dev/null
-npm pack --json --pack-destination "$PACK_DIR" ./packages/cli >/dev/null
+for package in core rules sarif cli; do
+  (
+    cd "packages/$package"
+    bun pm pack --destination "$PACK_DIR" >/dev/null
+  )
+done
 
 for tarball in "$PACK_DIR"/*.tgz; do
   manifest="$(tar -xOf "$tarball" package/package.json)"
