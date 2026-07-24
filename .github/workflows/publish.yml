@@ -1,0 +1,84 @@
+name: Publish
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - packages/cli/package.json
+      - packages/core/package.json
+      - packages/rules/package.json
+      - packages/sarif/package.json
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish missing package versions after verification
+        required: true
+        default: false
+        type: boolean
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  pack:
+    name: Build and pack ${{ matrix.package }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        package: [core, sarif, rules, cli]
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version-file: package.json
+
+      - run: bun install --frozen-lockfile
+
+      - name: Build and pack
+        env:
+          PACKAGE: ${{ matrix.package }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun run build
+          mkdir -p release-artifacts
+          (
+            cd "packages/${PACKAGE}"
+            npm pack --ignore-scripts \
+              --pack-destination "$GITHUB_WORKSPACE/release-artifacts"
+          )
+
+      - name: Upload tarball
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: npm-tarball-${{ matrix.package }}
+          path: release-artifacts/*.tgz
+          retention-days: 1
+          if-no-files-found: error
+
+  release:
+    name: Publish packages
+    needs: pack
+    if: >-
+      github.ref == 'refs/heads/main'
+      && (github.event_name == 'push' || inputs.publish)
+    permissions:
+      contents: write
+      id-token: write
+    # npm trusted publishing authorizes this caller workflow filename.
+    uses: stella/.github/.github/workflows/npm-independent-release.yml@v1.2.0 # zizmor: ignore[unpinned-uses]
+    with:
+      artifact-pattern: npm-tarball-*
+      package-files: |
+        packages/core/package.json
+        packages/sarif/package.json
+        packages/rules/package.json
+        packages/cli/package.json
