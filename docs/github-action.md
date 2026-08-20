@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.3.14
+          bun-version: 1.4.0
       - run: >
           bunx @stll/skillguard scan ./skills
           --preset strict
@@ -48,7 +48,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.3.14
+          bun-version: 1.4.0
       - run: >
           bunx @stll/skillguard scan ./skills
           --preset paranoid
@@ -83,7 +83,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.3.14
+          bun-version: 1.4.0
       - run: >
           bunx @stll/skillguard scan ./skills
           --preset paranoid
