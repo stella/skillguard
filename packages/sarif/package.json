@@ -43,7 +43,7 @@
     "lint": "oxlint -c ../../oxlint.config.ts .",
     "lint:fix": "oxlint -c ../../oxlint.config.ts --fix .",
     "test": "bun test src",
-    "typecheck": "bun ../../scripts/tsc-native.ts --noEmit -p tsconfig.json"
+    "typecheck": "bun check --no-pretty --all --project=tsconfig.json"
   },
   "dependencies": {
     "@stll/skillguard-core": "workspace:*"

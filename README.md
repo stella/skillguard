@@ -70,11 +70,11 @@ bunx @stll/skillguard scan ./skill --format sarif --output skillguard.sarif
 install gate. Keep these knobs separate: a broad scan can still use an advisory
 policy, and a quick scan can still fail on medium findings.
 
-| Preset | Purpose |
-| --- | --- |
-| `quick` | High-confidence local checks for install gating. |
-| `standard` | Default. Adds dependency hygiene, dangerous code, taint-flow, and output-handling checks. |
-| `strict` | Adds lower-confidence behavioral checks: excessive agency, memory poisoning, tool misuse, trigger abuse, and MCP/tool metadata poisoning. |
+| Preset     | Purpose                                                                                                                                                   |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `quick`    | High-confidence local checks for install gating.                                                                                                          |
+| `standard` | Default. Adds dependency hygiene, dangerous code, taint-flow, and output-handling checks.                                                                 |
+| `strict`   | Adds lower-confidence behavioral checks: excessive agency, memory poisoning, tool misuse, trigger abuse, and MCP/tool metadata poisoning.                 |
 | `paranoid` | Adds malware/offensive-tool indicators, generic network-use findings, offline dependency advisory fallback, and OSV lookup when `--allow-network` is set. |
 
 Examples:
@@ -201,16 +201,19 @@ verification checklist.
 
 ## Development
 
-Typechecks always run the native TypeScript 7 compiler through
-`scripts/tsc-native.ts`. Classic TypeScript 6 remains installed only for the
-compiler API consumed by the rule parser and `eslint-plugin-sonarjs`; the
-toolchain policy test prevents package scripts from falling back to its
-`tsc` binary.
+Typechecks run `bun check --no-pretty --all --project=tsconfig.json` in every
+workspace. `bun run check:typecheck-parity` compares repository diagnostics and
+seeded classes against the retained native TypeScript 7 compiler. Classic
+TypeScript 6 remains installed for the compiler API consumed by the rule parser,
+`eslint-plugin-sonarjs`, and declaration generation. Editors keep the TypeScript
+language service because Bun has no language server. The toolchain policy test
+keeps workspace typecheck scripts on Bun.
 
 ```sh
 bun install
 bun run lint:ws
 bun run typecheck
+bun run check:typecheck-parity
 bun run lint
 bun run format:check
 bun run test
