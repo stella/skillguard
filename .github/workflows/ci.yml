@@ -67,6 +67,7 @@ jobs:
         run: bun run check:lockfile-versions
       - run: bun run lint:ws
       - run: bun run typecheck
+      - run: bun run check:typecheck-parity
       - run: bun run lint
       - run: bun run format:check
       - run: bun run test
