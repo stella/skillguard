@@ -58,10 +58,10 @@
     "@stll/skillguard-core": "workspace:*",
     "@stll/skillguard-rules": "workspace:*",
     "@stll/skillguard-sarif": "workspace:*",
-    "jszip": "3.10.1"
+    "jszip": "3.10.2"
   },
   "devDependencies": {
-    "@stll/typescript-config": "0.6.0",
-    "@tanstack/intent": "0.0.41"
+    "@stll/typescript-config": "0.7.0",
+    "@tanstack/intent": "0.5.4"
   }
 }
