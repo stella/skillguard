@@ -7,7 +7,7 @@
       "devDependencies": {
         "@changesets/changelog-github": "1.0.0",
         "@changesets/cli": "3.0.0",
-        "@stll/oxlint-config": "0.11.0",
+        "@stll/oxlint-config": "0.12.0",
         "@stll/typescript-config": "0.6.0",
         "@types/node": "25.5.2",
         "@typescript/native": "npm:typescript@7.0.2",
@@ -362,7 +362,7 @@
 
     "@rolldown/pluginutils": ["@rolldown/pluginutils@1.0.1", "", {}, "sha512-2j9bGt5Jh8hj+vPtgzPtl72j0yRxHAyumoo6TNfAjsLB04UtpSvPbPcDcBMxz7n+9CYB0c1GxQFxYRg2jimqGw=="],
 
-    "@stll/oxlint-config": ["@stll/oxlint-config@0.11.0", "", { "dependencies": { "picomatch": "4.0.5", "semver": "7.8.5", "smol-toml": "1.9.0", "yaml": "2.9.0" }, "peerDependencies": { "oxlint": ">=1.87.0 <2", "oxlint-tsgolint": ">=7.0.2003 <8" }, "bin": { "stll-toolchain-check": "dist/toolchain-check-cli.mjs", "stll-typecheck-parity": "dist/typecheck-parity-cli.mjs" } }, "sha512-MGrgV6rN8b0kakfq/pLK/3u8wRTPP9idOGhzSfUIFak6XcqPCpOygQwRaco8/s2lYIXHv/q5KnJkrYozIEUORQ=="],
+    "@stll/oxlint-config": ["@stll/oxlint-config@0.12.0", "", { "dependencies": { "picomatch": "4.0.5", "semver": "7.8.5", "smol-toml": "1.9.0", "yaml": "2.9.0" }, "peerDependencies": { "oxlint": ">=1.87.0 <2", "oxlint-tsgolint": ">=7.0.2003 <8" }, "bin": { "stll-cloud-setup": "dist/cloud-setup-cli.mjs", "stll-toolchain-check": "dist/toolchain-check-cli.mjs", "stll-typecheck-parity": "dist/typecheck-parity-cli.mjs" } }, "sha512-mUKh7mk9rhoapdv2Eomt2IguV1olabxIjUb33Ow//YOugCmfAMSI9UjyIoc/FImp9q2CXM6rZQDBCyHzsyK/5Q=="],
 
     "@stll/skillguard": ["@stll/skillguard@workspace:packages/cli"],
 
