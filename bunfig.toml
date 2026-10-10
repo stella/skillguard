@@ -5,5 +5,5 @@ minimumReleaseAge = 432_000
 minimumReleaseAgeExcludes = [
   "@stll/oxlint-config",
   "@stll/typescript-config",
-  "bun-types", # quarantine-expires: 2026-09-09T08:36:48.390Z
+  "bun-types", # quarantine-expires: 2026-10-15T05:25:00Z
 ]

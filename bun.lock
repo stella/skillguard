@@ -7,11 +7,11 @@
       "devDependencies": {
         "@changesets/changelog-github": "1.0.0",
         "@changesets/cli": "3.0.0",
-        "@stll/oxlint-config": "0.6.0",
+        "@stll/oxlint-config": "0.8.0",
         "@stll/typescript-config": "0.6.0",
         "@types/node": "25.5.2",
         "@typescript/native": "npm:typescript@7.0.2",
-        "bun-types": "1.4.1",
+        "bun-types": "1.4.3",
         "eslint-plugin-sonarjs": "4.0.3",
         "knip": "6.14.2",
         "lefthook": "2.1.8",
@@ -362,7 +362,7 @@
 
     "@rolldown/pluginutils": ["@rolldown/pluginutils@1.0.1", "", {}, "sha512-2j9bGt5Jh8hj+vPtgzPtl72j0yRxHAyumoo6TNfAjsLB04UtpSvPbPcDcBMxz7n+9CYB0c1GxQFxYRg2jimqGw=="],
 
-    "@stll/oxlint-config": ["@stll/oxlint-config@0.6.0", "", { "peerDependencies": { "oxlint": ">=1.75.0 <2", "oxlint-tsgolint": ">=7.0.2001 <8" } }, "sha512-SPQuoCCMShDBR2+hKeEOv+qh6Ru5NbfjO79h4ZSJ2STlTL5CCQKIPv2ipK3iv5i6BjAIWE3D31lSWi65xWoQgA=="],
+    "@stll/oxlint-config": ["@stll/oxlint-config@0.8.0", "", { "peerDependencies": { "oxlint": ">=1.80.0 <2", "oxlint-tsgolint": ">=7.0.2001 <8" }, "bin": { "stll-toolchain-check": "dist/toolchain-check-cli.mjs" } }, "sha512-ly5Lzm1ZSdCoy0tCD69oPK8XUn2rMjICiyJNL9gYgAltFPPg1730/2aecRYXKAUHiyi/xWpQQL88km2Ab5F9Sw=="],
 
     "@stll/skillguard": ["@stll/skillguard@workspace:packages/cli"],
 
@@ -500,7 +500,7 @@
 
     "builtin-modules": ["builtin-modules@3.3.0", "", {}, "sha512-zhaCDicdLuWN5UbN5IMnFqNMhNfo919sH85y2/ea+5Yg9TsTkeZxpL+JLbp6cgYFS4sRLp3YV4S6yDuqVWHYOw=="],
 
-    "bun-types": ["bun-types@1.4.1", "", { "dependencies": { "@types/node": "*" } }, "sha512-loKuVrAFZKfEv+JvWkHRS9GW5IqLuLRjVXN9p+vZvBN86O5hf/pBZQ5hSoyipsrMmWObZBDvWnlmKvjKTM0PdA=="],
+    "bun-types": ["bun-types@1.4.3", "", { "dependencies": { "@types/node": "*", "undici-types": "*" } }, "sha512-tinRJNGOmUN+tEAsn2y2e942n9JHRHR42iUYzDH75NmhJqVBokGSQkkfSFdNWwsANIdrK6ACH9t01M452YyTwg=="],
 
     "bytes": ["bytes@3.1.2", "", {}, "sha512-/Nf7TyzTx6S3yRJObOAV7956r8cr2+Oj8AC5dt8wSP3BQAoeX58NoHyCU8P8zGkNXStjTSi6fzO6F0pBdcYbEg=="],
 
