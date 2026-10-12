@@ -1,0 +1,39 @@
+name: Typecheck proofs
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  proofs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      - run: bun run check:toolchain
+      - name: Verify typecheck rejects a seeded error
+        shell: bash
+        run: |
+          fixture=packages/core/src/typecheck-proof.ts
+          test ! -e "$fixture"
+          trap 'rm -f "$fixture"' EXIT
+          printf 'export const typecheckProof: number = "wrong";\n' > "$fixture"
+          if bun run typecheck > "$RUNNER_TEMP/typecheck-proof.log" 2>&1; then
+            cat "$RUNNER_TEMP/typecheck-proof.log"
+            echo "Typecheck accepted a seeded type error"
+            exit 1
+          fi
+          cat "$RUNNER_TEMP/typecheck-proof.log"
+          grep -q 'TS2322' "$RUNNER_TEMP/typecheck-proof.log"
+          rm "$fixture"
+          trap - EXIT
+          bun run typecheck
+      - run: bun run check:typecheck-parity

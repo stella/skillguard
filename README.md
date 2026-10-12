@@ -209,6 +209,10 @@ TypeScript 6 remains installed for the compiler API consumed by the rule parser,
 language service because Bun has no language server. The toolchain policy test
 keeps workspace typecheck scripts on Bun.
 
+CI keeps the normal typecheck, lint, and tests. Compiler parity and the seeded
+typecheck rejection proof run only through the manually dispatched
+[Typecheck proofs workflow](.github/workflows/typecheck-proofs.yml).
+
 ```sh
 bun install
 bun run lint:ws
