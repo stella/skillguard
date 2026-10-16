@@ -71,22 +71,7 @@ jobs:
       - run: bun run lint:ws
       - run: bun run typecheck
       - name: Verify typecheck rejects a seeded error
-        shell: bash
-        run: |
-          fixture=packages/core/src/typecheck-proof.ts
-          test ! -e "$fixture"
-          trap 'rm -f "$fixture"' EXIT
-          printf 'export const typecheckProof: number = "wrong";\n' > "$fixture"
-          if bun run typecheck > "$RUNNER_TEMP/typecheck-proof.log" 2>&1; then
-            cat "$RUNNER_TEMP/typecheck-proof.log"
-            echo "Typecheck accepted a seeded type error"
-            exit 1
-          fi
-          cat "$RUNNER_TEMP/typecheck-proof.log"
-          grep -q 'TS2322' "$RUNNER_TEMP/typecheck-proof.log"
-          rm "$fixture"
-          trap - EXIT
-          bun run typecheck
+        run: bunx --no-install stll-typecheck-probe --project packages/core/tsconfig.json --seed-dir packages/core/src -- bun run typecheck
       - name: Detect toolchain changes
         id: toolchain
         run: |
