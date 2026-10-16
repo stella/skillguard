@@ -51,9 +51,12 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      BASE_REF: ${{ (github.event_name == 'pull_request' && github.event.pull_request.base.sha) || (github.event_name == 'push' && github.event.before) || 'unavailable-toolchain-base' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0
           persist-credentials: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
@@ -84,7 +87,14 @@ jobs:
           rm "$fixture"
           trap - EXIT
           bun run typecheck
+      - name: Detect toolchain changes
+        id: toolchain
+        run: |
+          bunx --no-install stll-toolchain-changed --since "$BASE_REF" > "$RUNNER_TEMP/toolchain-changes.json"
+          node --input-type=module -e 'import fs from "node:fs"; const result = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (typeof result.changed !== "boolean") throw new Error("Missing toolchain changed result"); fs.appendFileSync(process.env.GITHUB_OUTPUT, `changed=${result.changed}\n`);' "$RUNNER_TEMP/toolchain-changes.json"
       - run: bun run check:typecheck-parity
+        if: steps.toolchain.outputs.changed == 'true'
+      - run: bun test scripts/tooling-adoption.test.ts
       - run: bun run lint
       - run: bun run format:check
       - run: bun run test

@@ -1,0 +1,16 @@
+name: Package quarantine policy
+
+on:
+  pull_request:
+  merge_group:
+
+permissions:
+  contents: read
+
+jobs:
+  enforce:
+    name: Enforce package quarantine
+    if: github.repository == 'stella/skillguard'
+    permissions:
+      contents: read
+    uses: stella/.github/.github/workflows/quarantine-policy.yml@5764ab66e4df84cfd2e642c7d7e4678261e668f8
