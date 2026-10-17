@@ -21,6 +21,7 @@ const sonarFixtures = {
   "confidential-information-logging":
     'import { Signale } from "signale";\n\nexport const logger = new Signale();',
   "no-hardcoded-secrets":
+    // oxlint-disable-next-line sonarjs/no-hardcoded-secrets -- Synthetic token exercises the retained secret detector.
     'export const token = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";',
   "no-identical-conditions":
     "export const inspect = (input) => { if (input === 1) return 2; else if (input === 1) return 3; return 4; };",
@@ -34,6 +35,16 @@ const sonarFixtures = {
   "stateful-regex":
     'const pattern = /match/g; export const first = pattern.test("first"); export const second = pattern.test("second");',
 };
+
+const isDiagnostic = (
+  value: unknown,
+): value is { code: string; filename: string } =>
+  typeof value === "object" &&
+  value !== null &&
+  "code" in value &&
+  typeof value.code === "string" &&
+  "filename" in value &&
+  typeof value.filename === "string";
 
 describe("shared tooling adoption", () => {
   test("adds the complete portable pack without weakening shared defaults", () => {
@@ -83,8 +94,16 @@ describe("shared tooling adoption", () => {
         { cwd: root, encoding: "utf8" },
       );
       expect(result.status).toBe(1);
-      const output = JSON.parse(result.stdout);
-      expect(output.diagnostics).toBeArray();
+      const output: unknown = JSON.parse(result.stdout);
+      if (
+        typeof output !== "object" ||
+        output === null ||
+        !("diagnostics" in output) ||
+        !Array.isArray(output.diagnostics) ||
+        !output.diagnostics.every(isDiagnostic)
+      ) {
+        throw new Error("Expected structured lint diagnostics");
+      }
       return output.diagnostics;
     };
     try {
@@ -102,14 +121,14 @@ describe("shared tooling adoption", () => {
       for (const name of Object.keys(sonarFixtures)) {
         expect(
           retained.some(
-            (diagnostic: { code: string; filename: string }) =>
+            (diagnostic) =>
               diagnostic.filename.endsWith(`/${name}.js`) &&
               diagnostic.code.includes(name),
           ),
         ).toBe(true);
       }
       const sharedMatches = Object.keys(sonarFixtures).filter((name) =>
-        central.some((diagnostic: { filename: string }) =>
+        central.some((diagnostic) =>
           diagnostic.filename.endsWith(`/${name}.js`),
         ),
       );
@@ -125,7 +144,7 @@ describe("shared tooling adoption", () => {
   test("cloud generation is reproducible and third-party quarantine stays enabled", () => {
     const paths = [".agents/cloud-setup.sh", ".claude/settings.json"];
     const before = paths.map(read);
-    execFileSync("bunx", ["--no-install", "stll-cloud-setup"], { cwd: root });
+    execFileSync("bun", ["--bun", "stll-cloud-setup"], { cwd: root });
     expect(paths.map(read)).toEqual(before);
     const bunfig = Bun.TOML.parse(read("bunfig.toml"));
     expect(bunfig.install.minimumReleaseAge).toBe(432_000);
@@ -138,6 +157,19 @@ describe("shared tooling adoption", () => {
       expect(read(`.github/workflows/${workflow}.yml`)).toContain(
         `uses: stella/.github/.github/workflows/${workflow}.yml@`,
       );
+    }
+  });
+
+  test("Dependabot generation includes tracked fixture package roots reproducibly", () => {
+    const before = read(".github/dependabot.yml");
+    execFileSync("bun", ["--bun", "stll-dependabot"], { cwd: root });
+    expect(read(".github/dependabot.yml")).toBe(before);
+    for (const directory of [
+      "/fixtures/benign/basic",
+      "/fixtures/malicious/install-hook",
+    ]) {
+      expect(before).toContain(`      - ${directory}\n`);
+      expect(read(`${directory.slice(1)}/package.json`)).toBeString();
     }
   });
 

@@ -1,7 +1,10 @@
 version: 2
 updates:
   - package-ecosystem: bun
-    directory: /
+    directories:
+      - /
+      - /fixtures/benign/basic
+      - /fixtures/malicious/install-hook
     schedule:
       interval: weekly
       day: saturday
