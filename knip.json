@@ -4,6 +4,9 @@
   "ignoreBinaries": ["check"],
   "ignoreDependencies": ["@typescript/native", "bun-types"],
   "workspaces": {
+    ".": {
+      "entry": ["scripts/**/*.test.ts"]
+    },
     "packages/cli": {
       "entry": ["src/**/*.test.ts"]
     },
