@@ -37,4 +37,20 @@ describe("TypeScript toolchain policy", () => {
     expect(rootPackage.devDependencies.typescript).toBe("6.0.3");
     expect(rulesPackage.dependencies.typescript).toBe("6.0.3");
   });
+
+  test("delegates seeded failure and clean recovery to the shared probe", async () => {
+    const workflow = await Bun.file(
+      new URL("../.github/workflows/ci.yml", import.meta.url),
+    ).text();
+    const proof = workflow
+      .split("      - name: Verify typecheck rejects a seeded error\n")
+      .at(1)
+      ?.split("      - name: Detect toolchain changes\n")
+      .at(0);
+    expect(proof?.trim()).toBe(
+      "run: bunx --no-install stll-typecheck-probe --project packages/core/tsconfig.json --seed-dir packages/core/src -- bun run typecheck",
+    );
+    expect(workflow).not.toContain("typecheck-proof.ts");
+    expect(workflow).not.toContain("typecheck-proof.log");
+  });
 });

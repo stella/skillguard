@@ -51,9 +51,12 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      BASE_REF: ${{ (github.event_name == 'pull_request' && github.event.pull_request.base.sha) || (github.event_name == 'push' && github.event.before) || 'unavailable-toolchain-base' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0
           persist-credentials: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
@@ -68,23 +71,15 @@ jobs:
       - run: bun run lint:ws
       - run: bun run typecheck
       - name: Verify typecheck rejects a seeded error
-        shell: bash
+        run: bunx --no-install stll-typecheck-probe --project packages/core/tsconfig.json --seed-dir packages/core/src -- bun run typecheck
+      - name: Detect toolchain changes
+        id: toolchain
         run: |
-          fixture=packages/core/src/typecheck-proof.ts
-          test ! -e "$fixture"
-          trap 'rm -f "$fixture"' EXIT
-          printf 'export const typecheckProof: number = "wrong";\n' > "$fixture"
-          if bun run typecheck > "$RUNNER_TEMP/typecheck-proof.log" 2>&1; then
-            cat "$RUNNER_TEMP/typecheck-proof.log"
-            echo "Typecheck accepted a seeded type error"
-            exit 1
-          fi
-          cat "$RUNNER_TEMP/typecheck-proof.log"
-          grep -q 'TS2322' "$RUNNER_TEMP/typecheck-proof.log"
-          rm "$fixture"
-          trap - EXIT
-          bun run typecheck
+          bunx --no-install stll-toolchain-changed --since "$BASE_REF" > "$RUNNER_TEMP/toolchain-changes.json"
+          node --input-type=module -e 'import fs from "node:fs"; const result = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (typeof result.changed !== "boolean") throw new Error("Missing toolchain changed result"); fs.appendFileSync(process.env.GITHUB_OUTPUT, `changed=${result.changed}\n`);' "$RUNNER_TEMP/toolchain-changes.json"
       - run: bun run check:typecheck-parity
+        if: steps.toolchain.outputs.changed == 'true'
+      - run: bun test scripts/tooling-adoption.test.ts
       - run: bun run lint
       - run: bun run format:check
       - run: bun run test

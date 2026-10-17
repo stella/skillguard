@@ -1,9 +1,9 @@
 [install]
-linker = "hoisted"
+linker = "isolated"
 # 5-day quarantine: reject package versions published less than 5 days ago.
 minimumReleaseAge = 432_000
 minimumReleaseAgeExcludes = [
   "@stll/oxlint-config",
+  "@stll/oxlint-plugin",
   "@stll/typescript-config",
-  "bun-types", # quarantine-expires: 2026-10-15T05:29:43.845Z
 ]

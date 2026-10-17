@@ -61,7 +61,7 @@
     "jszip": "3.10.1"
   },
   "devDependencies": {
-    "@stll/typescript-config": "0.6.0",
+    "@stll/typescript-config": "0.8.0",
     "@tanstack/intent": "0.0.41"
   }
 }
