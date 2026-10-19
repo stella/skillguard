@@ -1,6 +1,8 @@
 name: CI
 
 on:
+  merge_group:
+    types: [checks_requested]
   pull_request:
   push:
     branches:
@@ -92,3 +94,23 @@ jobs:
       - run: bun run build
       - run: bun --filter @stll/skillguard intent:validate
       - run: bun run pack:verify
+
+  ci-result:
+    if: always()
+    needs: [changeset, verify]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Require every selected validation job
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          CHANGESET_RESULT: ${{ needs.changeset.result }}
+          VERIFY_RESULT: ${{ needs.verify.result }}
+        run: |
+          test "$VERIFY_RESULT" = success
+          if [ "$EVENT_NAME" = pull_request ]; then
+            test "$CHANGESET_RESULT" = success
+          else
+            case "$CHANGESET_RESULT" in success|skipped) ;; *) exit 1 ;; esac
+          fi

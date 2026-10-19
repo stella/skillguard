@@ -3,11 +3,14 @@ name: CLA Assistant
 on:
   issue_comment:
     types: [created]
+  merge_group:
+    types: [checks_requested]
   pull_request_target: # zizmor: ignore[dangerous-triggers] delegates to pinned reusable CLA workflow; never check out PR code here
     types: [opened, synchronize, reopened, closed]
 
 permissions:
   actions: write
+  checks: write
   contents: read
   issues: write
   pull-requests: write
@@ -17,7 +20,8 @@ jobs:
   cla:
     if: >-
       (
-        github.event_name == 'pull_request_target'
+        github.event_name == 'merge_group'
+        || github.event_name == 'pull_request_target'
       ) || (
         github.event_name == 'issue_comment'
         && github.event.issue.pull_request
