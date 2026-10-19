@@ -39,6 +39,17 @@ test("the aggregate gate passes only when every selected job succeeded", () => {
   expect(gate("merge_group", "success", "failure")).not.toBe(0);
 });
 
+test("dependency review compares the merge group's own base and head", () => {
+  const review = loadWorkflow("../.github/workflows/dependency-review.yml");
+  expect(review.on.merge_group.types).toEqual(["checks_requested"]);
+  const step = review.jobs["dependency-review"].steps.find(
+    (candidate: { uses?: string }) =>
+      candidate.uses?.startsWith("actions/dependency-review-action@"),
+  );
+  expect(step.with["base-ref"]).toContain("github.event.merge_group.base_sha");
+  expect(step.with["head-ref"]).toContain("github.event.merge_group.head_sha");
+});
+
 test("CI and CLA workflows handle merge queue checks", () => {
   expect(ciWorkflow.on.merge_group.types).toEqual(["checks_requested"]);
   expect(claWorkflow.on.merge_group.types).toEqual(["checks_requested"]);

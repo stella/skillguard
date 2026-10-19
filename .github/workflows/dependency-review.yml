@@ -39,8 +39,12 @@ jobs:
 
       - name: Dependency Review
         if: steps.dependency-graph.outputs.enabled == 'true'
-        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v4
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with:
+          # The action derives both refs from a pull_request payload on its own;
+          # a merge group carries them under its own event key.
+          base-ref: ${{ github.event.merge_group.base_sha || '' }}
+          head-ref: ${{ github.event.merge_group.head_sha || '' }}
           fail-on-severity: high
           allow-licenses: >-
             MIT,
