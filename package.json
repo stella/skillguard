@@ -30,7 +30,7 @@
     "knip": "knip",
     "lint": "turbo run lint",
     "lint:fix": "turbo run lint:fix",
-    "lint:ws": "sherif -r unsync-similar-dependencies && bun test scripts/toolchain-policy.test.ts scripts/bun-lock-workspace-versions.test.ts scripts/cla-workflow.test.ts",
+    "lint:ws": "sherif -r unsync-similar-dependencies && bun test scripts/toolchain-policy.test.ts scripts/bun-lock-workspace-versions.test.ts scripts/cla-workflow.test.ts scripts/ci-result.test.ts",
     "pack:verify": "bash scripts/verify-pack.sh",
     "secrets:check:staged": "bash scripts/check-staged-secrets.sh",
     "test": "turbo run test",

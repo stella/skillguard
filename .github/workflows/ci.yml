@@ -68,7 +68,6 @@ jobs:
       - name: Lockfile workspace-version check
         run: bun run check:lockfile-versions
       - run: bun run lint:ws
-      - run: bun test ./scripts/ci-result.test.ts
       - run: bun run typecheck
       - name: Verify typecheck rejects a seeded error
         shell: bash
