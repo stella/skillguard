@@ -23,8 +23,9 @@ test("CLA covers every pull request and only signing or recheck comments", () =>
     "closed",
   ]);
   expect(workflow.on.issue_comment.types).toEqual(["created"]);
+  expect(workflow.on.merge_group.types).toEqual(["checks_requested"]);
   expect(workflow.jobs.cla.if.trim().replace(/\s+/gu, " ")).toBe(
-    "( github.event_name == 'pull_request_target' ) || ( github.event_name == 'issue_comment' && github.event.issue.pull_request && ( github.event.comment.body == 'recheck' || github.event.comment.body == 'I have read the CLA Document and I hereby sign the CLA' ) )",
+    "( github.event_name == 'merge_group' || github.event_name == 'pull_request_target' ) || ( github.event_name == 'issue_comment' && github.event.issue.pull_request && ( github.event.comment.body == 'recheck' || github.event.comment.body == 'I have read the CLA Document and I hereby sign the CLA' ) )",
   );
 });
 

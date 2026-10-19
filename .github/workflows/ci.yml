@@ -1,6 +1,8 @@
 name: CI
 
 on:
+  merge_group:
+    types: [checks_requested]
   pull_request:
   push:
     branches:
@@ -24,7 +26,7 @@ jobs:
 
       - name: Enforce release intent
         # The repository owner publishes this versioned shared contract.
-        uses: stella/.github/.github/actions/changeset-policy@c47bb87cc82047b5fdc2540983148d4e3efa9a37 # v1.3.0
+        uses: stella/.github/.github/actions/changeset-policy@37bfa04a893d1ae2b9d28379cf68e8360781c8bc # v1.8.0
         with:
           release-paths: |
             packages/cli/**
@@ -87,3 +89,23 @@ jobs:
       - run: bun run build
       - run: bun --filter @stll/skillguard intent:validate
       - run: bun run pack:verify
+
+  ci-result:
+    if: always()
+    needs: [changeset, verify]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Require every selected validation job
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          CHANGESET_RESULT: ${{ needs.changeset.result }}
+          VERIFY_RESULT: ${{ needs.verify.result }}
+        run: |
+          test "$VERIFY_RESULT" = success
+          if [ "$EVENT_NAME" = pull_request ]; then
+            test "$CHANGESET_RESULT" = success
+          else
+            case "$CHANGESET_RESULT" in success|skipped) ;; *) exit 1 ;; esac
+          fi

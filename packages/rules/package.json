@@ -46,7 +46,7 @@
     "typecheck": "bun check --no-pretty --all --project=tsconfig.json"
   },
   "dependencies": {
-    "@lezer/python": "1.1.18",
+    "@lezer/python": "1.1.19",
     "@stll/skillguard-core": "workspace:*",
     "typescript": "6.0.3"
   },
