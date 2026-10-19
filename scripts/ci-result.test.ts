@@ -22,11 +22,15 @@ test("CI and CLA workflows handle merge queue checks", () => {
   expect(claWorkflow.on.merge_group.types).toEqual(["checks_requested"]);
 });
 
-test("CI runs the aggregate policy test directly", () => {
+test("CI runs the aggregate policy test with the workspace script tests", () => {
   const runs = Object.values(ciWorkflow.jobs)
     .flatMap((job) => job.steps ?? [])
     .map((step) => step.run)
     .filter(Boolean);
+  const packageJson = JSON.parse(
+    readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+  );
 
-  expect(runs).toContain("bun test ./scripts/ci-result.test.ts");
+  expect(runs).toContain("bun run lint:ws");
+  expect(packageJson.scripts["lint:ws"]).toContain("scripts/ci-result.test.ts");
 });
