@@ -17,6 +17,28 @@ test("the aggregate result depends on every CI validation job", () => {
   expect(aggregate.if).toBe("always()");
 });
 
+test("the aggregate gate passes only when every selected job succeeded", () => {
+  const script = ciWorkflow.jobs["ci-result"].steps[0].run;
+  const gate = (event: string, verify: string, changeset: string) =>
+    Bun.spawnSync(["bash", "-e", "-c", script], {
+      env: {
+        PATH: process.env.PATH,
+        EVENT_NAME: event,
+        VERIFY_RESULT: verify,
+        CHANGESET_RESULT: changeset,
+      },
+    }).exitCode;
+
+  expect(gate("pull_request", "success", "success")).toBe(0);
+  expect(gate("merge_group", "success", "skipped")).toBe(0);
+  expect(gate("pull_request", "success", "skipped")).not.toBe(0);
+  for (const verify of ["failure", "cancelled", "skipped"]) {
+    expect(gate("pull_request", verify, "success")).not.toBe(0);
+    expect(gate("merge_group", verify, "skipped")).not.toBe(0);
+  }
+  expect(gate("merge_group", "success", "failure")).not.toBe(0);
+});
+
 test("CI and CLA workflows handle merge queue checks", () => {
   expect(ciWorkflow.on.merge_group.types).toEqual(["checks_requested"]);
   expect(claWorkflow.on.merge_group.types).toEqual(["checks_requested"]);
