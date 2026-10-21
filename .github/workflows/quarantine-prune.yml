@@ -13,7 +13,7 @@ jobs:
     if: github.repository == 'stella/skillguard'
     permissions:
       contents: read
-    uses: stella/.github/.github/workflows/quarantine-prune.yml@5764ab66e4df84cfd2e642c7d7e4678261e668f8
+    uses: stella/.github/.github/workflows/quarantine-prune.yml@0dbf135e44f23ba69cb434b12eca5abea1456be4
     secrets:
       CHANGELOG_APP_ID: ${{ secrets.CHANGELOG_APP_ID }}
       CHANGELOG_APP_PRIVATE_KEY: ${{ secrets.CHANGELOG_APP_PRIVATE_KEY }}
