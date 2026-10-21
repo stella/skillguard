@@ -1,0 +1,5 @@
+{
+  "cloud": {
+    "install": "bun install --frozen-lockfile"
+  }
+}
