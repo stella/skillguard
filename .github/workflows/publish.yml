@@ -70,7 +70,7 @@ jobs:
       contents: write
       id-token: write
     # npm trusted publishing authorizes this caller workflow filename.
-    uses: stella/.github/.github/workflows/npm-independent-release.yml@caa3ee1c2d02ef807994fdd3907c55ba104aff00 # v1.3.0
+    uses: stella/.github/.github/workflows/npm-independent-release.yml@0dbf135e44f23ba69cb434b12eca5abea1456be4 # v1.3.0
     with:
       artifact-pattern: npm-tarball-*
       package-files: |
