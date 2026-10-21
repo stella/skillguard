@@ -21,8 +21,9 @@ const sonarFixtures = {
   "confidential-information-logging":
     'import { Signale } from "signale";\n\nexport const logger = new Signale();',
   "no-hardcoded-secrets":
+    // Random synthetic token: the detector skips placeholder-shaped values such as runs of the alphabet.
     // oxlint-disable-next-line sonarjs/no-hardcoded-secrets -- Synthetic token exercises the retained secret detector.
-    'export const token = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";',
+    'export const token = "njuwYWd3dC1WVElPwI6liXfgb80cJadq2nCeZJlYNpfqPv6rpJN6LywqkAxhCi7Q";', // gitleaks:allow
   "no-identical-conditions":
     "export const inspect = (input) => { if (input === 1) return 2; else if (input === 1) return 3; return 4; };",
   "no-identical-functions":
@@ -31,7 +32,8 @@ const sonarFixtures = {
     "export const inspect = (left, right) => !(left === right);",
   "no-unthrown-error":
     'export const inspect = () => { new Error("problem"); };',
-  "slow-regex": "export const inspect = (input) => /a+$/u.test(input);",
+  // The check reports only exponential backtracking, so the fixture nests quantifiers.
+  "slow-regex": "export const inspect = (input) => /(a+)+$/u.test(input);",
   "stateful-regex":
     'const pattern = /match/g; export const first = pattern.test("first"); export const second = pattern.test("second");',
 };
