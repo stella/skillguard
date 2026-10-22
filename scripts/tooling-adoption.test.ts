@@ -151,11 +151,19 @@ describe("shared tooling adoption", () => {
     expect(paths.map(read)).toEqual(before);
     const bunfig = Bun.TOML.parse(read("bunfig.toml"));
     expect(bunfig.install.minimumReleaseAge).toBe(432_000);
-    expect(bunfig.install.minimumReleaseAgeExcludes.toSorted()).toEqual([
+    const excludes: string[] = bunfig.install.minimumReleaseAgeExcludes;
+    expect(
+      excludes.filter((name) => name.startsWith("@stll/")).toSorted(),
+    ).toEqual([
       "@stll/oxlint-config",
       "@stll/oxlint-plugin",
       "@stll/typescript-config",
     ]);
+    // A third-party exclusion names the instant the normal quarantine admits it.
+    for (const name of excludes.filter((entry) => !entry.startsWith("@stll/")))
+      expect(read("bunfig.toml")).toMatch(
+        new RegExp(`"${name}",\\s*# quarantine-expires: \\S+`, "u"),
+      );
     for (const workflow of ["quarantine-policy", "quarantine-prune"]) {
       expect(read(`.github/workflows/${workflow}.yml`)).toContain(
         `uses: stella/.github/.github/workflows/${workflow}.yml@`,
