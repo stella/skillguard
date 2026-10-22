@@ -1,5 +1,6 @@
-import type { ScanReport } from "@stll/skillguard-core";
 import { expect, test } from "bun:test";
+
+import type { ScanReport } from "@stll/skillguard-core";
 
 import { toSarif } from "./index";
 

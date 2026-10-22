@@ -4,12 +4,12 @@ import { tmpdir } from "node:os";
 import nodePath from "node:path";
 
 import {
-  FindingCategory,
-  Severity,
   createFinding,
   evaluatePolicy,
-  scanPath,
+  FindingCategory,
   type Rule,
+  scanPath,
+  Severity,
 } from "./index";
 
 test("scanPath scans text files without including file contents in report files", async () => {

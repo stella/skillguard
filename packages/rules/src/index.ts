@@ -1,22 +1,23 @@
 import { parser as pythonParser } from "@lezer/python";
+import * as ts from "typescript";
+
 import {
-  FindingCategory,
-  Severity,
   createFinding,
+  type Finding,
+  FindingCategory,
+  type FindingInput,
   isRecord,
   isTextLikeFile,
-  scanPath,
-  severityAtLeast,
-  type Finding,
-  type FindingInput,
-  type JsonScanFile,
   type JsonScalar,
+  type JsonScanFile,
   type Rule,
   type RuleContext,
   type ScanOptions,
+  scanPath,
+  Severity,
+  severityAtLeast,
   type TextScanFile,
 } from "@stll/skillguard-core";
-import * as ts from "typescript";
 
 export {
   RULE_CATALOG,
