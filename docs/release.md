@@ -35,7 +35,7 @@ bun install --frozen-lockfile
 bun run lint:ws
 bun run typecheck
 bun run lint
-bun run format:check
+bun fmt --check
 bun run test
 bun run knip
 bun --filter @stll/skillguard intent:validate

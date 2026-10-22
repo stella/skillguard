@@ -1,15 +1,16 @@
-import { Severity, scanPath } from "@stll/skillguard-core";
 import { expect, test } from "bun:test";
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import nodePath from "node:path";
 
+import { scanPath, Severity } from "@stll/skillguard-core";
+
 import {
+  createRecommendedRuleSet,
+  createSemanticReviewRule,
   RULE_CATALOG,
   ScanPreset,
   SemanticProviderName,
-  createRecommendedRuleSet,
-  createSemanticReviewRule,
   type SemanticReviewInput,
 } from "./index";
 

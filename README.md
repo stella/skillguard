@@ -215,7 +215,7 @@ bun run lint:ws
 bun run typecheck
 bun run check:typecheck-parity
 bun run lint
-bun run format:check
+bun fmt --check
 bun run test
 bun run knip
 bun run build

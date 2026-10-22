@@ -1,13 +1,14 @@
-import { library } from "@stll/oxlint-config";
-import {
-  portableSafetyPluginSpecifiers,
-  portableSafetyRules,
-} from "@stll/oxlint-plugin";
 import { describe, expect, test } from "bun:test";
 import { execFileSync, spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { library } from "@stll/oxlint-config";
+import {
+  portableSafetyPluginSpecifiers,
+  portableSafetyRules,
+} from "@stll/oxlint-plugin";
 
 import config from "../oxlint.config";
 

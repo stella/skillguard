@@ -46,7 +46,6 @@
   "scripts": {
     "build": "tsdown --entry src/index.ts --format esm --dts",
     "clean": "git clean -xdf .cache dist node_modules",
-    "format": "oxfmt -c ../../.oxfmtrc.json .",
     "lint": "oxlint -c ../../oxlint.config.ts .",
     "lint:fix": "oxlint -c ../../oxlint.config.ts --fix .",
     "intent:validate": "intent validate skills",
