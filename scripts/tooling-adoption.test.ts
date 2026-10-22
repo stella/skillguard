@@ -144,6 +144,7 @@ describe("shared tooling adoption", () => {
   });
 
   test("cloud generation is reproducible and third-party quarantine stays enabled", () => {
+    const quarantinePin = "df2659b7ccaa9cb69e69a99787fd4e2180db5893";
     const paths = [".agents/cloud-setup.sh", ".claude/settings.json"];
     const before = paths.map(read);
     execFileSync("bun", ["--bun", "stll-cloud-setup"], { cwd: root });
@@ -157,9 +158,15 @@ describe("shared tooling adoption", () => {
     ]);
     for (const workflow of ["quarantine-policy", "quarantine-prune"]) {
       expect(read(`.github/workflows/${workflow}.yml`)).toContain(
-        `uses: stella/.github/.github/workflows/${workflow}.yml@`,
+        `uses: stella/.github/.github/workflows/${workflow}.yml@${quarantinePin}`,
       );
     }
+    expect(read(".github/workflows/quarantine-policy.yml")).not.toContain(
+      "schedule:",
+    );
+    expect(read(".github/workflows/quarantine-prune.yml")).toContain(
+      '    - cron: "11 4 * * *"',
+    );
   });
 
   test("Dependabot generation includes tracked fixture package roots reproducibly", () => {
