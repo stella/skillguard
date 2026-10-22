@@ -152,7 +152,6 @@ describe("shared tooling adoption", () => {
     expect(bunfig.install.minimumReleaseAge).toBe(432_000);
     expect(bunfig.install.minimumReleaseAgeExcludes.toSorted()).toEqual([
       "@stll/oxlint-config",
-      "@stll/oxlint-config@1.4.0",
       "@stll/oxlint-plugin",
       "@stll/typescript-config",
     ]);
