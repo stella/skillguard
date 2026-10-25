@@ -522,3 +522,65 @@ test("standard preset detects dangerous JavaScript and TypeScript AST behavior",
     ),
   ).toBe(true);
 });
+
+const scanJsTsAstFindings = async (
+  fileName: string,
+  lines: readonly string[],
+): Promise<string[]> => {
+  const directory = await mkdtemp(nodePath.join(tmpdir(), "skillguard-"));
+
+  await writeFile(nodePath.join(directory, fileName), lines.join("\n"));
+
+  const report = await scanPath(directory, {
+    preset: ScanPreset.Standard,
+    rules: createRecommendedRuleSet({ preset: ScanPreset.Standard }),
+  });
+
+  // Reports sort by severity; order by line so the expectation reads top-down.
+  return report.findings
+    .filter((finding) => finding.ruleId === "skillguard.js-ts-ast")
+    .toSorted(
+      (left, right) => (left.location?.line ?? 0) - (right.location?.line ?? 0),
+    )
+    .map(
+      (finding) =>
+        `${finding.location?.line}:${String(finding.metadata?.["pattern"])}`,
+    );
+};
+
+test("JavaScript AST rule reads destructuring defaults, optional chains and JSX", async () => {
+  const findings = await scanJsTsAstFindings("runner.jsx", [
+    'import cp from "child_process";',
+    "const run = cp?.exec;",
+    'run("ls");',
+    "let b;",
+    "({ k: b = process.env.OTHER } = {});",
+    "fetch(u, { body: b });",
+    '[document.cookie = "x"] = [];',
+    '(document.cookie) = "z";',
+    'const { ["exec"]: e2, "execFile": e3 } = require("child_process");',
+    'e2("x"); e3("y");',
+    "const secret = process.env.SECRET;",
+    "fetch(u, { body: <a.b.secret /> });",
+    "fetch(u, { body: <Comp secret={1} /> });",
+    "\\u0065val(x);",
+  ]);
+
+  expect(findings).toEqual([
+    "3:JSA3",
+    "6:JSA7",
+    "7:JSA9",
+    "10:JSA3",
+    "13:JSA7",
+    "14:JSA1",
+  ]);
+});
+
+test("JavaScript AST rule reports unparseable scripts instead of skipping them", async () => {
+  const findings = await scanJsTsAstFindings("broken.ts", [
+    "const payload = ;",
+    "eval(payload);",
+  ]);
+
+  expect(findings).toEqual(["1:JSA10"]);
+});

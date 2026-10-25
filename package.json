@@ -35,7 +35,6 @@
     "secrets:check:staged": "bash scripts/check-staged-secrets.sh",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",
-    "check:typecheck-parity": "stll-typecheck-parity --project packages/cli/tsconfig.json --project packages/core/tsconfig.json --project packages/rules/tsconfig.json --project packages/sarif/tsconfig.json",
     "sync-ai": "bash scripts/sync-ai-skills.sh",
     "sync-ai:check": "bash scripts/sync-ai-skills.sh --check"
   },
@@ -46,7 +45,6 @@
     "@stll/oxlint-plugin": "0.2.2",
     "@stll/typescript-config": "0.8.0",
     "@types/node": "26.6.5",
-    "@typescript/native": "npm:typescript@7.0.2",
     "bun-types": "1.4.3",
     "eslint-plugin-sonarjs": "4.2.2",
     "knip": "6.41.0",
@@ -57,7 +55,7 @@
     "sherif": "1.13.0",
     "tsdown": "0.23.1",
     "turbo": "2.11.7",
-    "typescript": "6.0.3"
+    "typescript": "7.0.2"
   },
   "engines": {
     "bun": ">=1.4.1",

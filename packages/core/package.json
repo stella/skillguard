@@ -37,7 +37,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsdown --entry src/index.ts --format esm --dts",
+    "build": "tsdown --entry src/index.ts --format esm --dts.generator oxc",
     "clean": "git clean -xdf .cache dist node_modules",
     "format": "oxfmt -c ../../.oxfmtrc.json .",
     "lint": "oxlint -c ../../oxlint.config.ts .",

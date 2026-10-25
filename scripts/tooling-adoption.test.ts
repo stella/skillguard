@@ -174,16 +174,4 @@ describe("shared tooling adoption", () => {
       expect(read(`${directory.slice(1)}/package.json`)).toBeString();
     }
   });
-
-  test("parity uses the shared detector and complete Git history", () => {
-    const workflow = read(".github/workflows/ci.yml")
-      .split("  verify:\n")
-      .at(1);
-    expect(workflow).toContain("fetch-depth: 0");
-    expect(workflow).toContain('stll-toolchain-changed --since "$BASE_REF"');
-    expect(workflow).toContain("github.event.pull_request.base.sha");
-    expect(workflow).toContain("github.event.before");
-    expect(workflow).toContain("unavailable-toolchain-base");
-    expect(workflow).toContain("if: steps.toolchain.outputs.changed == 'true'");
-  });
 });

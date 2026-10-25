@@ -255,7 +255,6 @@ SkillGuard is a local-first security scanner and policy gate for Agent Skills.
 - `bun install`
 - `bun run lint:ws`
 - `bun run typecheck` (`bun check --no-pretty --all --project=tsconfig.json` in each workspace)
-- `bun run check:typecheck-parity`
 - `bun run lint`
 - `bun run test`
 - `bun run build`
@@ -276,4 +275,4 @@ SkillGuard is a local-first security scanner and policy gate for Agent Skills.
 
 ### TypeScript Tooling
 
-Editors retain the TypeScript language service because Bun has no language server. Keep TypeScript 6 for compiler-API consumers (the rule parser and lint plugin) and declaration generation; keep native TypeScript 7 for diagnostic parity.
+Type checking is `bun check`; the JavaScript/TypeScript rule parses with oxc-parser and tsdown emits declarations with its oxc generator, so no workspace package declares `typescript`; the root `typescript` devDependency exists only because `stll-toolchain-check` runs its `tsc` to list type-aware lint projects. Exported declarations need explicit types. Editors keep their bundled TypeScript language service because Bun has no language server.

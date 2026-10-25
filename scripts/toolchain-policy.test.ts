@@ -1,41 +1,57 @@
 import { describe, expect, test } from "bun:test";
 
 import rootPackage from "../package.json";
-import rulesPackage from "../packages/rules/package.json";
 
 const packagePaths = rootPackage.workspaces.flatMap((pattern) =>
   [...new Bun.Glob(`${pattern}/package.json`).scanSync()].toSorted(
     (left, right) => left.localeCompare(right),
   ),
 );
+const manifestPaths = ["package.json", ...packagePaths];
 const bunTypecheck = "bun check --no-pretty --all --project=tsconfig.json";
+const dependencyFields = [
+  "dependencies",
+  "devDependencies",
+  "optionalDependencies",
+  "peerDependencies",
+] as const;
 
 describe("TypeScript toolchain policy", () => {
-  test("uses Bun for every workspace typecheck and retains the parity compiler", async () => {
-    expect(rootPackage.devDependencies["@typescript/native"]).toBe(
-      "npm:typescript@7.0.2",
-    );
+  test("uses Bun for every workspace typecheck", async () => {
     for (const path of packagePaths) {
       const packageJson = await Bun.file(path).json();
       expect(packageJson.scripts.typecheck).toBe(bunTypecheck);
     }
   });
 
-  test("parity covers every workspace typecheck project", () => {
-    expect(rootPackage.scripts["check:typecheck-parity"]).toBe(
-      [
-        "stll-typecheck-parity",
-        ...packagePaths.map(
-          (path) =>
-            `--project ${path.replace(/package\.json$/, "tsconfig.json")}`,
-        ),
-      ].join(" "),
-    );
+  // stll-toolchain-check resolves typescript/bin/tsc to list the type-aware lint
+  // projects; that root devDependency is the only TypeScript install.
+  test("declares TypeScript only for the shared toolchain check", async () => {
+    expect(rootPackage.devDependencies.typescript).toBe("7.0.2");
+    for (const path of manifestPaths) {
+      const packageJson = await Bun.file(path).json();
+      for (const field of dependencyFields) {
+        const names = Object.keys(packageJson[field] ?? {}).filter(
+          (name) =>
+            !(path === "package.json" && field === "devDependencies") ||
+            name !== "typescript",
+        );
+        expect({ path, field, names }).toEqual({
+          path,
+          field,
+          names: names.filter(
+            (name) => name !== "typescript" && !name.startsWith("@typescript/"),
+          ),
+        });
+      }
+    }
   });
 
-  test("keeps classic TypeScript 6 scoped to compiler-API consumers", () => {
-    expect(rootPackage.devDependencies.typescript).toBe("6.0.3");
-    expect(rulesPackage.dependencies.typescript).toBe("6.0.3");
+  test("builds declarations without a TypeScript compiler", async () => {
+    for (const path of packagePaths) {
+      const packageJson = await Bun.file(path).json();
+      expect(packageJson.scripts.build).toContain("--dts.generator oxc");
+    }
   });
 
   test("delegates seeded failure and clean recovery to the shared probe", async () => {
@@ -45,12 +61,13 @@ describe("TypeScript toolchain policy", () => {
     const proof = workflow
       .split("      - name: Verify typecheck rejects a seeded error\n")
       .at(1)
-      ?.split("      - name: Detect toolchain changes\n")
+      ?.split("      - run: bun test scripts/tooling-adoption.test.ts\n")
       .at(0);
     expect(proof?.trim()).toBe(
       "run: bunx --no-install stll-typecheck-probe --project packages/core/tsconfig.json --seed-dir packages/core/src -- bun run typecheck",
     );
     expect(workflow).not.toContain("typecheck-proof.ts");
     expect(workflow).not.toContain("typecheck-proof.log");
+    expect(workflow).not.toContain("typecheck-parity");
   });
 });

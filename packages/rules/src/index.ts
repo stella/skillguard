@@ -14,9 +14,28 @@ import {
   type Rule,
   type RuleContext,
   type ScanOptions,
+  type ScanReport,
   type TextScanFile,
 } from "@stll/skillguard-core";
-import * as ts from "typescript";
+import {
+  parseSync,
+  visitorKeys,
+  type BindingPattern,
+  type BindingProperty,
+  type BindingRestElement,
+  type CallExpression,
+  type IdentifierName,
+  type ImportDeclarationSpecifier,
+  type ImportExpression,
+  type MemberExpression,
+  type ModuleExportName,
+  type NewExpression,
+  type Node,
+  type OxcError,
+  type PrivateIdentifier,
+  type Program,
+  type VariableDeclarator,
+} from "oxc-parser";
 
 export {
   RULE_CATALOG,
@@ -161,6 +180,7 @@ type PythonTraversalDecision = false | undefined;
 type JsTsAstContext = {
   childProcessCalls: Map<string, string>;
   childProcessModules: Set<string>;
+  destructuringDefaults: Set<Node>;
   fsModules: Set<string>;
   fsReadCalls: Set<string>;
   taintedIdentifiers: Map<string, Set<JsTsTaintKind>>;
@@ -202,7 +222,7 @@ export const createRecommendedRuleSet = (
 export const scanWithRecommendedRules = (
   targetPath: string,
   options: RecommendedRuleSetOptions & Omit<ScanOptions, "rules"> = {},
-) =>
+): Promise<ScanReport> =>
   scanPath(targetPath, {
     ...options,
     preset: options.preset ?? ScanPreset.Standard,
@@ -1232,17 +1252,20 @@ const jsTsAstRule: Rule = {
         continue;
       }
 
-      const sourceFile = ts.createSourceFile(
-        file.path,
-        file.content,
-        ts.ScriptTarget.Latest,
-        true,
-        getJsTsScriptKind(file.path),
-      );
-      const astContext = collectJsTsAstContext(sourceFile);
+      const { errors, program } = parseSync(file.path, file.content, {
+        lang: getJsTsLanguage(file.path),
+        sourceType: "unambiguous",
+      });
 
-      walkTsNode(sourceFile, (node) => {
-        collectJsTsNodeFindings(file, sourceFile, astContext, node, findings);
+      if (errors.length > 0) {
+        emitJsTsParseErrorFinding(file, errors, findings);
+        continue;
+      }
+
+      const astContext = collectJsTsAstContext(program);
+
+      walkJsTsNode(program, (node) => {
+        collectJsTsNodeFindings(file, astContext, node, findings);
         return undefined;
       });
     }
@@ -2291,13 +2314,12 @@ const isJsTsTextFile = (
   return JS_TS_EXTENSIONS.some((extension) => file.path.endsWith(extension));
 };
 
-const getJsTsScriptKind = (filePath: string): ts.ScriptKind => {
-  if (filePath.endsWith(".tsx")) {
-    return ts.ScriptKind.TSX;
-  }
+type JsTsLanguage = "jsx" | "ts" | "tsx";
 
-  if (filePath.endsWith(".jsx")) {
-    return ts.ScriptKind.JSX;
+// JavaScript files accept JSX, matching how editors and bundlers read them.
+const getJsTsLanguage = (filePath: string): JsTsLanguage => {
+  if (filePath.endsWith(".tsx")) {
+    return "tsx";
   }
 
   if (
@@ -2305,30 +2327,61 @@ const getJsTsScriptKind = (filePath: string): ts.ScriptKind => {
     filePath.endsWith(".mts") ||
     filePath.endsWith(".cts")
   ) {
-    return ts.ScriptKind.TS;
+    return "ts";
   }
 
-  return ts.ScriptKind.JS;
+  return "jsx";
+};
+
+const emitJsTsParseErrorFinding = (
+  file: TextScanFile,
+  errors: readonly OxcError[],
+  findings: Finding[],
+): void => {
+  const firstError = errors.at(0);
+  const offset = firstError?.labels.at(0)?.start ?? 0;
+  const position = getLineColumn(file.content, offset);
+  const reason = firstError?.message ?? "unknown syntax error";
+
+  findings.push(
+    createFinding(jsTsAstRule, {
+      title: "Unparseable JavaScript or TypeScript",
+      message: `Could not parse JavaScript or TypeScript in ${file.path}: ${reason}`,
+      remediation:
+        "Fix the syntax error or remove the file so every script can be analyzed.",
+      category: FindingCategory.ScanIntegrity,
+      confidence: 1,
+      severity: Severity.Medium,
+      location: {
+        path: file.path,
+        line: position.line,
+        column: position.column,
+      },
+      metadata: { pattern: "JSA10" },
+    }),
+  );
 };
 
 const createJsTsAstContext = (): JsTsAstContext => ({
   childProcessCalls: new Map(),
   childProcessModules: new Set(["child_process"]),
+  destructuringDefaults: new Set(),
   fsModules: new Set(["fs"]),
   fsReadCalls: new Set(),
   taintedIdentifiers: new Map(),
 });
 
-const collectJsTsAstContext = (sourceFile: ts.SourceFile): JsTsAstContext => {
+const collectJsTsAstContext = (program: Program): JsTsAstContext => {
   const context = createJsTsAstContext();
 
-  walkTsNode(sourceFile, (node) => {
+  walkJsTsNode(program, (node) => {
+    collectJsTsDestructuringDefaults(node, context);
     collectJsTsImportBinding(node, context);
     collectJsTsRequireBinding(node, context);
     return undefined;
   });
 
-  walkTsNode(sourceFile, (node) => {
+  walkJsTsNode(program, (node) => {
     collectJsTsTaintBinding(node, context);
     return undefined;
   });
@@ -2336,70 +2389,167 @@ const collectJsTsAstContext = (sourceFile: ts.SourceFile): JsTsAstContext => {
   return context;
 };
 
-const collectJsTsTaintBinding = (
-  node: ts.Node,
+// A default inside a destructuring assignment (`[a = b] = c`, `{ k: a = b } = c`)
+// is an assignment expression in its own right; defaults in declarations,
+// parameters and shorthand properties are not.
+const collectJsTsDestructuringDefaults = (
+  node: Node,
   context: JsTsAstContext,
 ): void => {
-  if (ts.isVariableDeclaration(node)) {
-    collectJsTsVariableTaint(node, context);
+  if (node.type === "AssignmentExpression") {
+    markJsTsDestructuringDefaults(node.left, context);
     return;
   }
 
   if (
-    !ts.isBinaryExpression(node) ||
-    node.operatorToken.kind !== ts.SyntaxKind.EqualsToken ||
-    !ts.isIdentifier(node.left)
+    (node.type === "ForInStatement" || node.type === "ForOfStatement") &&
+    node.left.type !== "VariableDeclaration"
   ) {
+    markJsTsDestructuringDefaults(node.left, context);
+  }
+};
+
+const markJsTsDestructuringDefaults = (
+  target: Node,
+  context: JsTsAstContext,
+): void => {
+  switch (target.type) {
+    case "ArrayPattern":
+      for (const element of target.elements) {
+        if (element === null) {
+          continue;
+        }
+
+        if (element.type === "AssignmentPattern") {
+          context.destructuringDefaults.add(element);
+          markJsTsDestructuringDefaults(element.left, context);
+          continue;
+        }
+
+        markJsTsDestructuringDefaults(element, context);
+      }
+      return;
+    case "ObjectPattern":
+      for (const property of target.properties) {
+        if (property.type === "RestElement") {
+          markJsTsDestructuringDefaults(property.argument, context);
+          continue;
+        }
+
+        if (property.value.type !== "AssignmentPattern") {
+          markJsTsDestructuringDefaults(property.value, context);
+          continue;
+        }
+
+        if (!property.shorthand) {
+          context.destructuringDefaults.add(property.value);
+        }
+
+        markJsTsDestructuringDefaults(property.value.left, context);
+      }
+      return;
+    case "RestElement":
+      markJsTsDestructuringDefaults(target.argument, context);
+      return;
+    default:
+      return;
+  }
+};
+
+type JsTsAssignment = {
+  left: Node;
+  node: Node;
+  right: Node;
+};
+
+const getJsTsAssignment = (
+  node: Node,
+  context: JsTsAstContext,
+): JsTsAssignment | undefined => {
+  if (node.type === "AssignmentExpression") {
+    if (node.operator !== "=" || isParenthesizedJsTsTarget(node, node.left)) {
+      return undefined;
+    }
+
+    return { node, left: node.left, right: node.right };
+  }
+
+  if (
+    node.type !== "AssignmentPattern" ||
+    !context.destructuringDefaults.has(node) ||
+    isParenthesizedJsTsTarget(node, node.left)
+  ) {
+    return undefined;
+  }
+
+  return { node, left: node.left, right: node.right };
+};
+
+// The parser drops parentheses around assignment targets; a target that starts
+// after its assignment was written as `(target) = value`.
+const isParenthesizedJsTsTarget = (assignment: Node, target: Node): boolean =>
+  target.start !== assignment.start;
+
+const collectJsTsTaintBinding = (node: Node, context: JsTsAstContext): void => {
+  if (node.type === "VariableDeclarator") {
+    collectJsTsVariableTaint(node, context);
     return;
   }
 
-  const taints = inferJsTsExpressionTaints(node.right, context);
+  const assignment = getJsTsAssignment(node, context);
+
+  if (assignment?.left.type !== "Identifier") {
+    return;
+  }
+
+  const targetName = assignment.left.name;
+  const taints = inferJsTsExpressionTaints(assignment.right, context);
 
   if (taints.size === 0) {
-    context.taintedIdentifiers.delete(node.left.text);
+    context.taintedIdentifiers.delete(targetName);
     return;
   }
 
-  context.taintedIdentifiers.set(node.left.text, taints);
+  context.taintedIdentifiers.set(targetName, taints);
 };
 
 const collectJsTsVariableTaint = (
-  node: ts.VariableDeclaration,
+  node: VariableDeclarator,
   context: JsTsAstContext,
 ): void => {
-  if (!ts.isIdentifier(node.name) || node.initializer === undefined) {
+  if (node.id.type !== "Identifier" || node.init === null) {
     return;
   }
 
-  const taints = inferJsTsExpressionTaints(node.initializer, context);
+  const taints = inferJsTsExpressionTaints(node.init, context);
 
   if (taints.size === 0) {
     return;
   }
 
-  context.taintedIdentifiers.set(node.name.text, taints);
+  context.taintedIdentifiers.set(node.id.name, taints);
 };
 
 const inferJsTsExpressionTaints = (
-  node: ts.Node,
+  node: Node,
   context: JsTsAstContext,
 ): Set<JsTsTaintKind> => {
   const taints = new Set<JsTsTaintKind>();
 
-  walkTsNode(node, (child) => {
-    if (ts.isIdentifier(child) && !isJsTsPropertyNameIdentifier(child)) {
-      addTaints(taints, context.taintedIdentifiers.get(child.text));
+  walkJsTsNode(node, (child, parent) => {
+    const identifierName = getJsTsReferenceName(child, parent);
+
+    if (identifierName !== undefined) {
+      addTaints(taints, context.taintedIdentifiers.get(identifierName));
     }
 
-    const expressionName = ts.isExpression(child)
-      ? getJsExpressionName(child, context)
-      : undefined;
+    const expressionName = getJsExpressionName(child, context);
 
     if (expressionName?.startsWith("process.env") === true) {
       taints.add("secret");
     }
 
-    if (!ts.isCallExpression(child)) {
+    if (child.type !== "CallExpression") {
       return undefined;
     }
 
@@ -2437,22 +2587,18 @@ const addTaints = <T extends string>(
 };
 
 const collectJsTsImportBinding = (
-  node: ts.Node,
+  node: Node,
   context: JsTsAstContext,
 ): void => {
-  if (!ts.isImportDeclaration(node)) {
+  if (node.type !== "ImportDeclaration") {
     return;
   }
 
-  const moduleName = getStaticStringValue(node.moduleSpecifier);
-
-  if (moduleName === undefined || node.importClause === undefined) {
-    return;
-  }
+  const moduleName = node.source.value;
 
   if (CHILD_PROCESS_MODULES.has(moduleName)) {
     collectJsTsModuleImportBinding({
-      importClause: node.importClause,
+      specifiers: node.specifiers,
       moduleCalls: context.childProcessCalls,
       moduleMethods: CHILD_PROCESS_METHODS,
       moduleAliases: context.childProcessModules,
@@ -2465,7 +2611,7 @@ const collectJsTsImportBinding = (
   }
 
   collectJsTsModuleImportBinding({
-    importClause: node.importClause,
+    specifiers: node.specifiers,
     moduleCalls: context.fsReadCalls,
     moduleMethods: FS_READ_METHODS,
     moduleAliases: context.fsModules,
@@ -2473,53 +2619,43 @@ const collectJsTsImportBinding = (
 };
 
 type CollectJsTsModuleImportBindingOptions = {
-  importClause: ts.ImportClause;
   moduleAliases: Set<string>;
   moduleCalls: Set<string> | Map<string, string>;
   moduleMethods: ReadonlySet<string>;
+  specifiers: readonly ImportDeclarationSpecifier[];
 };
 
 const collectJsTsModuleImportBinding = ({
-  importClause,
   moduleAliases,
   moduleCalls,
   moduleMethods,
+  specifiers,
 }: CollectJsTsModuleImportBindingOptions): void => {
-  if (importClause.name !== undefined) {
-    moduleAliases.add(importClause.name.text);
-  }
+  for (const specifier of specifiers) {
+    if (specifier.type !== "ImportSpecifier") {
+      moduleAliases.add(specifier.local.name);
+      continue;
+    }
 
-  const namedBindings = importClause.namedBindings;
-
-  if (namedBindings === undefined) {
-    return;
-  }
-
-  if (ts.isNamespaceImport(namedBindings)) {
-    moduleAliases.add(namedBindings.name.text);
-    return;
-  }
-
-  for (const element of namedBindings.elements) {
-    const importedName = getImportSpecifierName(element);
+    const importedName = getModuleExportName(specifier.imported);
 
     if (!moduleMethods.has(importedName)) {
       continue;
     }
 
-    addJsTsModuleCall(moduleCalls, element.name.text, importedName);
+    addJsTsModuleCall(moduleCalls, specifier.local.name, importedName);
   }
 };
 
 const collectJsTsRequireBinding = (
-  node: ts.Node,
+  node: Node,
   context: JsTsAstContext,
 ): void => {
-  if (!ts.isVariableDeclaration(node) || node.initializer === undefined) {
+  if (node.type !== "VariableDeclarator" || node.init === null) {
     return;
   }
 
-  const requireModule = getRequireModuleName(node.initializer);
+  const requireModule = getRequireModuleName(node.init);
 
   if (requireModule !== undefined) {
     collectJsTsRequireModuleBinding(node, requireModule, context);
@@ -2530,13 +2666,13 @@ const collectJsTsRequireBinding = (
 };
 
 const collectJsTsRequireModuleBinding = (
-  node: ts.VariableDeclaration,
+  node: VariableDeclarator,
   moduleName: string,
   context: JsTsAstContext,
 ): void => {
   if (CHILD_PROCESS_MODULES.has(moduleName)) {
     collectJsTsModuleBindingName({
-      name: node.name,
+      name: node.id,
       moduleCalls: context.childProcessCalls,
       moduleMethods: CHILD_PROCESS_METHODS,
       moduleAliases: context.childProcessModules,
@@ -2549,7 +2685,7 @@ const collectJsTsRequireModuleBinding = (
   }
 
   collectJsTsModuleBindingName({
-    name: node.name,
+    name: node.id,
     moduleCalls: context.fsReadCalls,
     moduleMethods: FS_READ_METHODS,
     moduleAliases: context.fsModules,
@@ -2560,7 +2696,7 @@ type CollectJsTsModuleBindingNameOptions = {
   moduleAliases: Set<string>;
   moduleCalls: Set<string> | Map<string, string>;
   moduleMethods: ReadonlySet<string>;
-  name: ts.BindingName;
+  name: BindingPattern;
 };
 
 const collectJsTsModuleBindingName = ({
@@ -2569,51 +2705,108 @@ const collectJsTsModuleBindingName = ({
   moduleMethods,
   name,
 }: CollectJsTsModuleBindingNameOptions): void => {
-  if (ts.isIdentifier(name)) {
-    moduleAliases.add(name.text);
+  if (name.type === "Identifier") {
+    moduleAliases.add(name.name);
     return;
   }
 
-  if (!ts.isObjectBindingPattern(name)) {
+  if (name.type !== "ObjectPattern") {
     return;
   }
 
-  for (const element of name.elements) {
-    if (!ts.isIdentifier(element.name)) {
+  for (const property of name.properties) {
+    const binding = getJsTsObjectBinding(property);
+
+    if (binding === undefined) {
       continue;
     }
 
-    const importedName = getBindingElementPropertyName(element);
-
-    if (importedName === undefined || !moduleMethods.has(importedName)) {
+    if (
+      binding.importedName === undefined ||
+      !moduleMethods.has(binding.importedName)
+    ) {
       continue;
     }
 
-    addJsTsModuleCall(moduleCalls, element.name.text, importedName);
+    addJsTsModuleCall(moduleCalls, binding.localName, binding.importedName);
   }
 };
 
+type JsTsObjectBinding = {
+  importedName: string | undefined;
+  localName: string;
+};
+
+// Reads `{ key: local = fallback }`, `{ local }` and `{ ...local }`; the bound
+// name must be a plain identifier.
+const getJsTsObjectBinding = (
+  property: BindingProperty | BindingRestElement,
+): JsTsObjectBinding | undefined => {
+  if (property.type === "RestElement") {
+    if (property.argument.type !== "Identifier") {
+      return undefined;
+    }
+
+    return {
+      importedName: property.argument.name,
+      localName: property.argument.name,
+    };
+  }
+
+  const target =
+    property.value.type === "AssignmentPattern"
+      ? property.value.left
+      : property.value;
+
+  if (target.type !== "Identifier") {
+    return undefined;
+  }
+
+  return {
+    importedName: property.shorthand
+      ? target.name
+      : getBindingPropertyKeyName(property),
+    localName: target.name,
+  };
+};
+
+const getBindingPropertyKeyName = (
+  property: BindingProperty,
+): string | undefined => {
+  if (property.computed) {
+    return undefined;
+  }
+
+  if (property.key.type === "Identifier") {
+    return property.key.name;
+  }
+
+  return getStaticStringLiteralValue(property.key);
+};
+
 const collectJsTsPropertyAliasBinding = (
-  node: ts.VariableDeclaration,
+  node: VariableDeclarator,
   context: JsTsAstContext,
 ): void => {
-  if (!ts.isIdentifier(node.name) || node.initializer === undefined) {
+  if (node.id.type !== "Identifier" || node.init === null) {
     return;
   }
 
-  if (!ts.isPropertyAccessExpression(node.initializer)) {
+  const initializer = unwrapJsTsChain(node.init);
+
+  if (initializer.type !== "MemberExpression" || initializer.computed) {
     return;
   }
 
-  const propertyName = node.initializer.name.text;
-  const baseName = getJsExpressionName(node.initializer.expression, context);
+  const propertyName = getStaticMemberPropertyName(initializer.property);
+  const baseName = getJsExpressionName(initializer.object, context);
 
   if (
     baseName !== undefined &&
     context.childProcessModules.has(baseName) &&
     CHILD_PROCESS_METHODS.has(propertyName)
   ) {
-    context.childProcessCalls.set(node.name.text, propertyName);
+    context.childProcessCalls.set(node.id.name, propertyName);
     return;
   }
 
@@ -2622,7 +2815,7 @@ const collectJsTsPropertyAliasBinding = (
     context.fsModules.has(baseName) &&
     FS_READ_METHODS.has(propertyName)
   ) {
-    context.fsReadCalls.add(node.name.text);
+    context.fsReadCalls.add(node.id.name);
   }
 };
 
@@ -2641,29 +2834,32 @@ const addJsTsModuleCall = (
 
 const collectJsTsNodeFindings = (
   file: TextScanFile,
-  sourceFile: ts.SourceFile,
   context: JsTsAstContext,
-  node: ts.Node,
+  node: Node,
   findings: Finding[],
 ): void => {
-  if (ts.isCallExpression(node)) {
-    collectJsTsCallFindings(file, sourceFile, context, node, findings);
+  if (node.type === "CallExpression") {
+    collectJsTsCallFindings(file, context, node, findings);
     return;
   }
 
-  if (ts.isNewExpression(node)) {
-    collectJsTsNewExpressionFindings(file, sourceFile, context, node, findings);
+  if (node.type === "ImportExpression") {
+    collectJsTsImportExpressionFindings(file, node, findings);
     return;
   }
 
-  if (
-    !ts.isBinaryExpression(node) ||
-    node.operatorToken.kind !== ts.SyntaxKind.EqualsToken
-  ) {
+  if (node.type === "NewExpression") {
+    collectJsTsNewExpressionFindings(file, context, node, findings);
     return;
   }
 
-  const targetName = getJsExpressionName(node.left, context);
+  const assignment = getJsTsAssignment(node, context);
+
+  if (assignment === undefined) {
+    return;
+  }
+
+  const targetName = getJsExpressionName(assignment.left, context);
 
   if (targetName !== "document.cookie") {
     return;
@@ -2671,7 +2867,6 @@ const collectJsTsNodeFindings = (
 
   emitJsTsAstFinding({
     file,
-    sourceFile,
     node,
     findings,
     pattern: "JSA9",
@@ -2683,9 +2878,8 @@ const collectJsTsNodeFindings = (
 
 const collectJsTsCallFindings = (
   file: TextScanFile,
-  sourceFile: ts.SourceFile,
   context: JsTsAstContext,
-  node: ts.CallExpression,
+  node: CallExpression,
   findings: Finding[],
 ): void => {
   const callName = getJsCallName(node, context);
@@ -2695,17 +2889,9 @@ const collectJsTsCallFindings = (
   }
 
   if (callName === "eval") {
-    emitJsTsExecutionChainFinding(
-      file,
-      sourceFile,
-      context,
-      node,
-      "eval",
-      findings,
-    );
+    emitJsTsExecutionChainFinding(file, context, node, "eval", findings);
     emitJsTsAstFinding({
       file,
-      sourceFile,
       node,
       findings,
       pattern: "JSA1",
@@ -2717,17 +2903,9 @@ const collectJsTsCallFindings = (
   }
 
   if (callName === "Function") {
-    emitJsTsExecutionChainFinding(
-      file,
-      sourceFile,
-      context,
-      node,
-      "Function",
-      findings,
-    );
+    emitJsTsExecutionChainFinding(file, context, node, "Function", findings);
     emitJsTsAstFinding({
       file,
-      sourceFile,
       node,
       findings,
       pattern: "JSA2",
@@ -2741,7 +2919,6 @@ const collectJsTsCallFindings = (
   if (isJsTsChildProcessCall(callName)) {
     emitJsTsAstFinding({
       file,
-      sourceFile,
       node,
       findings,
       pattern: "JSA3",
@@ -2755,7 +2932,6 @@ const collectJsTsCallFindings = (
   if (callName === "Bun.spawn" || callName === "Bun.spawnSync") {
     emitJsTsAstFinding({
       file,
-      sourceFile,
       node,
       findings,
       pattern: "JSA4",
@@ -2766,10 +2942,9 @@ const collectJsTsCallFindings = (
     return;
   }
 
-  if (callName === "require" && isDynamicJsTsImportArgument(node)) {
+  if (callName === "require" && isDynamicJsTsImportArgument(node.arguments)) {
     emitJsTsAstFinding({
       file,
-      sourceFile,
       node,
       findings,
       pattern: "JSA6",
@@ -2780,51 +2955,41 @@ const collectJsTsCallFindings = (
     return;
   }
 
-  if (isDynamicImportCall(node) && isDynamicJsTsImportArgument(node)) {
-    emitJsTsAstFinding({
-      file,
-      sourceFile,
-      node,
-      findings,
-      pattern: "JSA6",
-      message: "Dynamic import() target detected.",
-      severity: Severity.Medium,
-      confidence: 0.65,
-    });
+  emitJsTsNetworkSinkFindings({ file, context, node, callName, findings });
+};
+
+const collectJsTsImportExpressionFindings = (
+  file: TextScanFile,
+  node: ImportExpression,
+  findings: Finding[],
+): void => {
+  if (!isDynamicJsTsImportArgument([node.source])) {
     return;
   }
 
-  emitJsTsNetworkSinkFindings(
+  emitJsTsAstFinding({
     file,
-    sourceFile,
-    context,
     node,
-    callName,
     findings,
-  );
+    pattern: "JSA6",
+    message: "Dynamic import() target detected.",
+    severity: Severity.Medium,
+    confidence: 0.65,
+  });
 };
 
 const collectJsTsNewExpressionFindings = (
   file: TextScanFile,
-  sourceFile: ts.SourceFile,
   context: JsTsAstContext,
-  node: ts.NewExpression,
+  node: NewExpression,
   findings: Finding[],
 ): void => {
-  const expressionName = getJsExpressionName(node.expression, context);
+  const expressionName = getJsExpressionName(node.callee, context);
 
   if (expressionName === "Function") {
-    emitJsTsExecutionChainFinding(
-      file,
-      sourceFile,
-      context,
-      node,
-      "Function",
-      findings,
-    );
+    emitJsTsExecutionChainFinding(file, context, node, "Function", findings);
     emitJsTsAstFinding({
       file,
-      sourceFile,
       node,
       findings,
       pattern: "JSA2",
@@ -2841,7 +3006,6 @@ const collectJsTsNewExpressionFindings = (
 
   emitJsTsAstFinding({
     file,
-    sourceFile,
     node,
     findings,
     pattern: "JSA4",
@@ -2851,14 +3015,21 @@ const collectJsTsNewExpressionFindings = (
   });
 };
 
-const emitJsTsNetworkSinkFindings = (
-  file: TextScanFile,
-  sourceFile: ts.SourceFile,
-  context: JsTsAstContext,
-  node: ts.CallExpression,
-  callName: string,
-  findings: Finding[],
-): void => {
+type EmitJsTsNetworkSinkFindingsOptions = {
+  callName: string;
+  context: JsTsAstContext;
+  file: TextScanFile;
+  findings: Finding[];
+  node: CallExpression;
+};
+
+const emitJsTsNetworkSinkFindings = ({
+  callName,
+  context,
+  file,
+  findings,
+  node,
+}: EmitJsTsNetworkSinkFindingsOptions): void => {
   if (!isJsTsNetworkSinkCall(callName)) {
     return;
   }
@@ -2870,7 +3041,6 @@ const emitJsTsNetworkSinkFindings = (
   ) {
     emitJsTsAstFinding({
       file,
-      sourceFile,
       node,
       findings,
       pattern: "JSA7",
@@ -2890,7 +3060,6 @@ const emitJsTsNetworkSinkFindings = (
 
   emitJsTsAstFinding({
     file,
-    sourceFile,
     node,
     findings,
     pattern: "JSA8",
@@ -2905,10 +3074,9 @@ type EmitJsTsAstFindingOptions = {
   file: TextScanFile;
   findings: Finding[];
   message: string;
-  node: ts.Node;
+  node: Node;
   pattern: string;
   severity: Severity;
-  sourceFile: ts.SourceFile;
 };
 
 const emitJsTsAstFinding = ({
@@ -2919,9 +3087,8 @@ const emitJsTsAstFinding = ({
   node,
   pattern,
   severity,
-  sourceFile,
 }: EmitJsTsAstFindingOptions): void => {
-  const position = getLineColumn(file.content, node.getStart(sourceFile));
+  const position = getLineColumn(file.content, node.start);
 
   findings.push(
     createFinding(jsTsAstRule, {
@@ -2940,9 +3107,8 @@ const emitJsTsAstFinding = ({
 
 const emitJsTsExecutionChainFinding = (
   file: TextScanFile,
-  sourceFile: ts.SourceFile,
   context: JsTsAstContext,
-  node: ts.CallExpression | ts.NewExpression,
+  node: CallExpression | NewExpression,
   callName: "Function" | "eval",
   findings: Finding[],
 ): void => {
@@ -2954,7 +3120,6 @@ const emitJsTsExecutionChainFinding = (
 
   emitJsTsAstFinding({
     file,
-    sourceFile,
     node,
     findings,
     pattern: "JSA5",
@@ -2965,10 +3130,10 @@ const emitJsTsExecutionChainFinding = (
 };
 
 const findDangerousJsTsExecutionSource = (
-  node: ts.CallExpression | ts.NewExpression,
+  node: CallExpression | NewExpression,
   context: JsTsAstContext,
 ): string | undefined => {
-  const firstArg = node.arguments?.at(0);
+  const firstArg = node.arguments.at(0);
 
   if (firstArg === undefined) {
     return undefined;
@@ -2982,8 +3147,8 @@ const findDangerousJsTsExecutionSource = (
 
   let source: string | undefined;
 
-  walkTsNode(firstArg, (child) => {
-    if (!ts.isCallExpression(child)) {
+  walkJsTsNode(firstArg, (child) => {
+    if (child.type !== "CallExpression") {
       return undefined;
     }
 
@@ -3005,7 +3170,7 @@ const findDangerousJsTsExecutionSource = (
 };
 
 const describeJsTsTaintSource = (
-  node: ts.Node,
+  node: Node,
   context: JsTsAstContext,
 ): string | undefined => {
   if (containsJsTsTaintKind(node, context, "network")) {
@@ -3024,24 +3189,23 @@ const describeJsTsTaintSource = (
 };
 
 const containsJsTsSecretSource = (
-  node: ts.Node,
+  node: Node,
   context: JsTsAstContext,
 ): boolean => {
   let found = false;
 
-  walkTsNode(node, (child) => {
-    const expressionName = ts.isExpression(child)
-      ? getJsExpressionName(child, context)
-      : undefined;
+  walkJsTsNode(node, (child, parent) => {
+    const identifierName = getJsTsReferenceName(child, parent);
 
     if (
-      ts.isIdentifier(child) &&
-      !isJsTsPropertyNameIdentifier(child) &&
-      hasJsTsTaint(context, child.text, "secret")
+      identifierName !== undefined &&
+      hasJsTsTaint(context, identifierName, "secret")
     ) {
       found = true;
       return false;
     }
+
+    const expressionName = getJsExpressionName(child, context);
 
     if (expressionName?.startsWith("process.env") === true) {
       found = true;
@@ -3055,22 +3219,23 @@ const containsJsTsSecretSource = (
 };
 
 const containsJsTsFileReadSource = (
-  node: ts.Node,
+  node: Node,
   context: JsTsAstContext,
 ): boolean => {
   let found = false;
 
-  walkTsNode(node, (child) => {
+  walkJsTsNode(node, (child, parent) => {
+    const identifierName = getJsTsReferenceName(child, parent);
+
     if (
-      ts.isIdentifier(child) &&
-      !isJsTsPropertyNameIdentifier(child) &&
-      hasJsTsTaint(context, child.text, "file")
+      identifierName !== undefined &&
+      hasJsTsTaint(context, identifierName, "file")
     ) {
       found = true;
       return false;
     }
 
-    if (!ts.isCallExpression(child)) {
+    if (child.type !== "CallExpression") {
       return undefined;
     }
 
@@ -3088,17 +3253,18 @@ const containsJsTsFileReadSource = (
 };
 
 const containsJsTsTaintKind = (
-  node: ts.Node,
+  node: Node,
   context: JsTsAstContext,
   kind: JsTsTaintKind,
 ): boolean => {
   let found = false;
 
-  walkTsNode(node, (child) => {
+  walkJsTsNode(node, (child, parent) => {
+    const identifierName = getJsTsReferenceName(child, parent);
+
     if (
-      !ts.isIdentifier(child) ||
-      isJsTsPropertyNameIdentifier(child) ||
-      !hasJsTsTaint(context, child.text, kind)
+      identifierName === undefined ||
+      !hasJsTsTaint(context, identifierName, kind)
     ) {
       return undefined;
     }
@@ -3116,71 +3282,96 @@ const hasJsTsTaint = (
   kind: JsTsTaintKind,
 ): boolean => context.taintedIdentifiers.get(identifier)?.has(kind) === true;
 
-const isJsTsPropertyNameIdentifier = (node: ts.Identifier): boolean =>
-  ts.isPropertyAccessExpression(node.parent) && node.parent.name === node;
+const getJsTsIdentifierName = (node: Node): string | undefined =>
+  node.type === "Identifier" || node.type === "JSXIdentifier"
+    ? node.name
+    : undefined;
 
-const getJsCallName = (
-  node: ts.CallExpression,
-  context: JsTsAstContext,
+// Any identifier except the property name of a member access (`b` in `a.b`).
+const getJsTsReferenceName = (
+  node: Node,
+  parent: Node | undefined,
 ): string | undefined => {
-  if (isDynamicImportCall(node)) {
-    return "import";
-  }
+  const name = getJsTsIdentifierName(node);
 
-  return getJsExpressionName(node.expression, context);
-};
-
-const getJsExpressionName = (
-  node: ts.Node,
-  context: JsTsAstContext,
-): string | undefined => {
-  if (ts.isIdentifier(node)) {
-    const childProcessCall = context.childProcessCalls.get(node.text);
-
-    if (childProcessCall !== undefined) {
-      return `child_process.${childProcessCall}`;
-    }
-
-    if (context.fsReadCalls.has(node.text)) {
-      return `fs.${node.text}`;
-    }
-
-    return node.text;
-  }
-
-  if (ts.isPropertyAccessExpression(node)) {
-    const baseName = getJsExpressionName(node.expression, context);
-    const propertyName = node.name.text;
-
-    if (
-      baseName !== undefined &&
-      context.childProcessModules.has(baseName) &&
-      CHILD_PROCESS_METHODS.has(propertyName)
-    ) {
-      return `child_process.${propertyName}`;
-    }
-
-    if (
-      baseName !== undefined &&
-      context.fsModules.has(baseName) &&
-      FS_READ_METHODS.has(propertyName)
-    ) {
-      return `fs.${propertyName}`;
-    }
-
-    if (baseName === undefined) {
-      return propertyName;
-    }
-
-    return `${baseName}.${propertyName}`;
-  }
-
-  if (!ts.isElementAccessExpression(node)) {
+  if (name === undefined || isJsTsMemberPropertyName(node, parent)) {
     return undefined;
   }
 
-  const baseName = getJsExpressionName(node.expression, context);
-  const argumentName = getStaticStringValue(node.argumentExpression);
+  return name;
+};
+
+const isJsTsMemberPropertyName = (
+  node: Node,
+  parent: Node | undefined,
+): boolean => {
+  if (parent?.type === "MemberExpression") {
+    return !parent.computed && parent.property === node;
+  }
+
+  return parent?.type === "JSXMemberExpression" && parent.property === node;
+};
+
+const getJsCallName = (
+  node: CallExpression,
+  context: JsTsAstContext,
+): string | undefined => getJsExpressionName(node.callee, context);
+
+const getJsExpressionName = (
+  node: Node,
+  context: JsTsAstContext,
+): string | undefined => {
+  switch (node.type) {
+    case "Identifier":
+    case "JSXIdentifier":
+      return getJsIdentifierExpressionName(node.name, context);
+    case "JSXMemberExpression":
+      return joinJsMemberName(
+        node.object.type === "JSXIdentifier" && node.object.name === "this"
+          ? undefined
+          : getJsExpressionName(node.object, context),
+        node.property.name,
+        context,
+      );
+    case "MemberExpression":
+      return getJsMemberExpressionName(node, context);
+    default:
+      return undefined;
+  }
+};
+
+const getJsIdentifierExpressionName = (
+  name: string,
+  context: JsTsAstContext,
+): string => {
+  const childProcessCall = context.childProcessCalls.get(name);
+
+  if (childProcessCall !== undefined) {
+    return `child_process.${childProcessCall}`;
+  }
+
+  if (context.fsReadCalls.has(name)) {
+    return `fs.${name}`;
+  }
+
+  return name;
+};
+
+const getJsMemberExpressionName = (
+  node: MemberExpression,
+  context: JsTsAstContext,
+): string | undefined => {
+  const baseName = getJsExpressionName(node.object, context);
+
+  if (!node.computed) {
+    return joinJsMemberName(
+      baseName,
+      getStaticMemberPropertyName(node.property),
+      context,
+    );
+  }
+
+  const argumentName = getStaticStringValue(node.property);
 
   if (baseName === undefined || argumentName === undefined) {
     return undefined;
@@ -3189,55 +3380,80 @@ const getJsExpressionName = (
   return `${baseName}.${argumentName}`;
 };
 
-const getRequireModuleName = (node: ts.Expression): string | undefined => {
-  if (!ts.isCallExpression(node)) {
+const joinJsMemberName = (
+  baseName: string | undefined,
+  propertyName: string,
+  context: JsTsAstContext,
+): string => {
+  if (
+    baseName !== undefined &&
+    context.childProcessModules.has(baseName) &&
+    CHILD_PROCESS_METHODS.has(propertyName)
+  ) {
+    return `child_process.${propertyName}`;
+  }
+
+  if (
+    baseName !== undefined &&
+    context.fsModules.has(baseName) &&
+    FS_READ_METHODS.has(propertyName)
+  ) {
+    return `fs.${propertyName}`;
+  }
+
+  if (baseName === undefined) {
+    return propertyName;
+  }
+
+  return `${baseName}.${propertyName}`;
+};
+
+const getStaticMemberPropertyName = (
+  property: IdentifierName | PrivateIdentifier,
+): string =>
+  property.type === "PrivateIdentifier" ? `#${property.name}` : property.name;
+
+const unwrapJsTsChain = (node: Node): Node =>
+  node.type === "ChainExpression" ? node.expression : node;
+
+const getRequireModuleName = (node: Node): string | undefined => {
+  const call = unwrapJsTsChain(node);
+
+  if (call.type !== "CallExpression") {
     return undefined;
   }
 
-  if (!ts.isIdentifier(node.expression) || node.expression.text !== "require") {
+  if (call.callee.type !== "Identifier" || call.callee.name !== "require") {
     return undefined;
   }
 
-  return getStaticStringValue(node.arguments.at(0));
+  return getStaticStringValue(call.arguments.at(0));
 };
 
-const getImportSpecifierName = (element: ts.ImportSpecifier): string =>
-  element.propertyName?.text ?? element.name.text;
+const getModuleExportName = (name: ModuleExportName): string =>
+  name.type === "Literal" ? name.value : name.name;
 
-const getBindingElementPropertyName = (
-  element: ts.BindingElement,
-): string | undefined => {
-  if (element.propertyName === undefined) {
-    return ts.isIdentifier(element.name) ? element.name.text : undefined;
-  }
+const getStaticStringLiteralValue = (node: Node): string | undefined =>
+  node.type === "Literal" && typeof node.value === "string"
+    ? node.value
+    : undefined;
 
-  if (ts.isIdentifier(element.propertyName)) {
-    return element.propertyName.text;
-  }
-
-  if (ts.isStringLiteral(element.propertyName)) {
-    return element.propertyName.text;
-  }
-
-  return undefined;
-};
-
-const getStaticStringValue = (
-  node: ts.Node | undefined,
-): string | undefined => {
+const getStaticStringValue = (node: Node | undefined): string | undefined => {
   if (node === undefined) {
     return undefined;
   }
 
-  if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
-    return node.text;
+  if (node.type === "TemplateLiteral") {
+    return node.expressions.length === 0
+      ? (node.quasis.at(0)?.value.cooked ?? undefined)
+      : undefined;
   }
 
-  return undefined;
+  return getStaticStringLiteralValue(node);
 };
 
-const isDynamicJsTsImportArgument = (node: ts.CallExpression): boolean => {
-  const firstArg = node.arguments.at(0);
+const isDynamicJsTsImportArgument = (args: readonly Node[]): boolean => {
+  const firstArg = args.at(0);
 
   if (firstArg === undefined) {
     return true;
@@ -3245,9 +3461,6 @@ const isDynamicJsTsImportArgument = (node: ts.CallExpression): boolean => {
 
   return getStaticStringValue(firstArg) === undefined;
 };
-
-const isDynamicImportCall = (node: ts.CallExpression): boolean =>
-  node.expression.kind === ts.SyntaxKind.ImportKeyword;
 
 const isJsTsChildProcessCall = (callName: string): boolean => {
   if (!callName.startsWith("child_process.")) {
@@ -3276,27 +3489,58 @@ const isJsTsNetworkSinkCall = (callName: string): boolean =>
 const getLastPathSegment = (value: string): string =>
   value.split(".").at(-1) ?? value;
 
-const walkTsNode = (
-  node: ts.Node,
-  visit: (node: ts.Node) => JsTsTraversalDecision,
-): boolean => {
-  const result = visit(node);
+// SAFETY: oxc-parser only places AST nodes (objects with a string `type`) under
+// the keys `visitorKeys` lists, so this guard is the trust boundary for them.
+const isJsTsAstNode = (value: unknown): value is Node =>
+  isRecord(value) && typeof value["type"] === "string";
 
-  if (result === false) {
+const getJsTsChildren = (node: Node): Node[] => {
+  const keys = visitorKeys[node.type];
+
+  if (keys === undefined) {
+    throw new Error(
+      `oxc-parser has no visitor keys for ${node.type}; update the JavaScript/TypeScript AST walker.`,
+    );
+  }
+
+  const children: Node[] = [];
+
+  for (const key of keys) {
+    const value: unknown = Reflect.get(node, key);
+
+    if (Array.isArray(value)) {
+      for (const element of value) {
+        if (isJsTsAstNode(element)) {
+          children.push(element);
+        }
+      }
+      continue;
+    }
+
+    if (isJsTsAstNode(value)) {
+      children.push(value);
+    }
+  }
+
+  return children;
+};
+
+const walkJsTsNode = (
+  node: Node,
+  visit: (node: Node, parent: Node | undefined) => JsTsTraversalDecision,
+  parent?: Node,
+): boolean => {
+  if (visit(node, parent) === false) {
     return false;
   }
 
-  let shouldContinue = true;
-
-  ts.forEachChild(node, (child) => {
-    if (!shouldContinue) {
-      return;
+  for (const child of getJsTsChildren(node)) {
+    if (!walkJsTsNode(child, visit, node)) {
+      return false;
     }
+  }
 
-    shouldContinue = walkTsNode(child, visit);
-  });
-
-  return shouldContinue;
+  return true;
 };
 
 const PYTHON_SUBPROCESS_CALLS = new Set([
