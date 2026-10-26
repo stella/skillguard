@@ -1,28 +1,29 @@
 #!/usr/bin/env bun
-import {
-  PolicyName,
-  ScanStatus,
-  Severity,
-  evaluatePolicy,
-  scanPath,
-  type Finding,
-  type PolicyName as PolicyNameValue,
-  type ScanReport,
-  type Severity as SeverityValue,
-} from "@stll/skillguard-core";
-import {
-  ScanPreset,
-  SemanticProviderName,
-  createRuleSet,
-  createSemanticReviewRule,
-  type ScanPreset as ScanPresetValue,
-  type SemanticProviderName as SemanticProviderNameValue,
-} from "@stll/skillguard-rules";
-import { toSarif } from "@stll/skillguard-sarif";
 import { readFileSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 
-import { resolveInput, type ResolvedInput } from "./input";
+import {
+  evaluatePolicy,
+  type Finding,
+  PolicyName,
+  type PolicyName as PolicyNameValue,
+  scanPath,
+  type ScanReport,
+  ScanStatus,
+  Severity,
+  type Severity as SeverityValue,
+} from "@stll/skillguard-core";
+import {
+  createRuleSet,
+  createSemanticReviewRule,
+  ScanPreset,
+  type ScanPreset as ScanPresetValue,
+  SemanticProviderName,
+  type SemanticProviderName as SemanticProviderNameValue,
+} from "@stll/skillguard-rules";
+import { toSarif } from "@stll/skillguard-sarif";
+
+import { type ResolvedInput, resolveInput } from "./input";
 
 type PackageManifest = {
   version: string;
