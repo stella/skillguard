@@ -102,9 +102,9 @@ const main = (argv: readonly string[]): number | Promise<number> => {
       return 0;
     case "command":
       return runScan(parsed.command);
+    default:
+      return assertNever(parsed);
   }
-
-  return assertNever(parsed);
 };
 
 const runScan = async (command: ScanCommand): Promise<number> => {
@@ -182,9 +182,9 @@ const formatOutput = (
       return `${JSON.stringify(toSarif(report), null, 2)}\n`;
     case "text":
       return formatTextReport(report, evaluation, input);
+    default:
+      return assertNever(format);
   }
-
-  return assertNever(format);
 };
 
 const formatTextReport = (

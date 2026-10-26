@@ -906,9 +906,9 @@ const toRiskRecommendation = (level: RiskLevel): string => {
       return "Review findings, then install only if the behavior is expected.";
     case "none":
       return "No findings from enabled analyzers.";
+    default:
+      return assertNever(level);
   }
-
-  return assertNever(level);
 };
 
 const createSeverityCounts = (): SeverityCounts => ({
@@ -942,9 +942,9 @@ const toReportFile = (file: ScanFile): ReportFile => {
         type: file.type,
         path: file.path,
       };
+    default:
+      return assertNever(file);
   }
-
-  return assertNever(file);
 };
 
 const assertNever = (value: never): never => {

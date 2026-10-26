@@ -210,9 +210,9 @@ export const createRuleSet = (
       return strictRules;
     case "paranoid":
       return createParanoidRules(options);
+    default:
+      return assertNever(preset);
   }
-
-  return assertNever(preset);
 };
 
 export const createRecommendedRuleSet = (
