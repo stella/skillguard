@@ -24,18 +24,11 @@ describe("TypeScript toolchain policy", () => {
     }
   });
 
-  // stll-toolchain-check resolves typescript/bin/tsc to list the type-aware lint
-  // projects; that root devDependency is the only TypeScript install.
-  test("declares TypeScript only for the shared toolchain check", async () => {
-    expect(rootPackage.devDependencies.typescript).toBe("7.0.2");
+  test("declares no TypeScript compiler in any manifest", async () => {
     for (const path of manifestPaths) {
       const packageJson = await Bun.file(path).json();
       for (const field of dependencyFields) {
-        const names = Object.keys(packageJson[field] ?? {}).filter(
-          (name) =>
-            !(path === "package.json" && field === "devDependencies") ||
-            name !== "typescript",
-        );
+        const names = Object.keys(packageJson[field] ?? {});
         expect({ path, field, names }).toEqual({
           path,
           field,

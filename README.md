@@ -204,10 +204,10 @@ verification checklist.
 Typechecks run `bun check --no-pretty --all --project=tsconfig.json` in every
 workspace. The JavaScript/TypeScript rule parses with `oxc-parser`, and tsdown
 emits declarations with its oxc generator, so no workspace package declares a
-TypeScript compiler. The root `typescript` devDependency exists only because
-`stll-toolchain-check` runs its `tsc` to list type-aware lint projects. Editors keep the TypeScript language service because Bun
-has no language server. The toolchain policy test keeps workspace typecheck
-scripts on Bun and workspace manifests free of `typescript`.
+TypeScript compiler, and no root `typescript` is installed. Editors keep the
+TypeScript language service because Bun has no language server. The toolchain
+policy test keeps workspace typecheck scripts on Bun and every manifest free of
+`typescript`.
 
 ```sh
 bun install

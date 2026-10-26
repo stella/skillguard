@@ -275,4 +275,4 @@ SkillGuard is a local-first security scanner and policy gate for Agent Skills.
 
 ### TypeScript Tooling
 
-Type checking is `bun check`; the JavaScript/TypeScript rule parses with oxc-parser and tsdown emits declarations with its oxc generator, so no workspace package declares `typescript`; the root `typescript` devDependency exists only because `stll-toolchain-check` runs its `tsc` to list type-aware lint projects. Exported declarations need explicit types. Editors keep their bundled TypeScript language service because Bun has no language server.
+Type checking is `bun check`; the JavaScript/TypeScript rule parses with oxc-parser and tsdown emits declarations with its oxc generator, so no workspace package declares `typescript`, and the root declares none either. Exported declarations need explicit types. Editors keep their bundled TypeScript language service because Bun has no language server.
