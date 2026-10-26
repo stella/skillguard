@@ -147,7 +147,11 @@ const toSarifLevel = (severity: Severity): SarifLevel => {
     case "info":
     case "low":
       return "note";
+    default:
+      return assertNever(severity);
   }
+};
 
-  return "none";
+const assertNever = (value: never): never => {
+  throw new Error(`Unhandled value: ${String(value)}`);
 };

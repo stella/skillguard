@@ -202,18 +202,17 @@ verification checklist.
 ## Development
 
 Typechecks run `bun check --no-pretty --all --project=tsconfig.json` in every
-workspace. `bun run check:typecheck-parity` compares repository diagnostics and
-seeded classes against the retained native TypeScript 7 compiler. Classic
-TypeScript 6 remains installed for the compiler API consumed by the rule parser,
-`eslint-plugin-sonarjs`, and declaration generation. Editors keep the TypeScript
-language service because Bun has no language server. The toolchain policy test
-keeps workspace typecheck scripts on Bun.
+workspace. The JavaScript/TypeScript rule parses with `oxc-parser`, and tsdown
+emits declarations with its oxc generator, so no workspace package declares a
+TypeScript compiler, and no root `typescript` is installed. Editors keep the
+TypeScript language service because Bun has no language server. The toolchain
+policy test keeps workspace typecheck scripts on Bun and every manifest free of
+`typescript`.
 
 ```sh
 bun install
 bun run lint:ws
 bun run typecheck
-bun run check:typecheck-parity
 bun run lint
 bun run format:check
 bun run test
