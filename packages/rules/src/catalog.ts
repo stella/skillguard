@@ -957,10 +957,10 @@ export const RULE_CATALOG = [
     ruleId: "skillguard.js-ts-ast",
     title: "Unparseable JavaScript or TypeScript",
     category: "scan-integrity",
-    severity: "medium",
+    severity: "high",
     confidence: 1,
     description:
-      "A JavaScript or TypeScript file has syntax errors, so its AST checks could not run.",
+      "A JavaScript or TypeScript file has syntax errors, so its AST checks covered only the part the parser recovered.",
     remediation:
       "Fix the syntax error or remove the file so every script can be analyzed.",
     examples: {

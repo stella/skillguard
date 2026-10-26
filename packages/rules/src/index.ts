@@ -1257,9 +1257,10 @@ const jsTsAstRule: Rule = {
         sourceType: "unambiguous",
       });
 
+      // Fail closed: a syntax error blocks under the standard policy, and the
+      // rules still run on whatever program oxc recovered around it.
       if (errors.length > 0) {
         emitJsTsParseErrorFinding(file, errors, findings);
-        continue;
       }
 
       const astContext = collectJsTsAstContext(program);
@@ -2351,7 +2352,7 @@ const emitJsTsParseErrorFinding = (
         "Fix the syntax error or remove the file so every script can be analyzed.",
       category: FindingCategory.ScanIntegrity,
       confidence: 1,
-      severity: Severity.Medium,
+      severity: Severity.High,
       location: {
         path: file.path,
         line: position.line,

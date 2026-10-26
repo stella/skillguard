@@ -1,4 +1,10 @@
-import { Severity, scanPath } from "@stll/skillguard-core";
+import {
+  PolicyName,
+  ScanStatus,
+  Severity,
+  evaluatePolicy,
+  scanPath,
+} from "@stll/skillguard-core";
 import { expect, test } from "bun:test";
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -523,18 +529,22 @@ test("standard preset detects dangerous JavaScript and TypeScript AST behavior",
   ).toBe(true);
 });
 
-const scanJsTsAstFindings = async (
-  fileName: string,
-  lines: readonly string[],
-): Promise<string[]> => {
+const scanJsTsAst = async (fileName: string, lines: readonly string[]) => {
   const directory = await mkdtemp(nodePath.join(tmpdir(), "skillguard-"));
 
   await writeFile(nodePath.join(directory, fileName), lines.join("\n"));
 
-  const report = await scanPath(directory, {
+  return scanPath(directory, {
     preset: ScanPreset.Standard,
     rules: createRecommendedRuleSet({ preset: ScanPreset.Standard }),
   });
+};
+
+const scanJsTsAstFindings = async (
+  fileName: string,
+  lines: readonly string[],
+): Promise<string[]> => {
+  const report = await scanJsTsAst(fileName, lines);
 
   // Reports sort by severity; order by line so the expectation reads top-down.
   return report.findings
@@ -583,4 +593,24 @@ test("JavaScript AST rule reports unparseable scripts instead of skipping them",
   ]);
 
   expect(findings).toEqual(["1:JSA10"]);
+});
+
+test("JavaScript AST rule fails the standard policy when a script cannot be parsed", async () => {
+  const report = await scanJsTsAst("broken.ts", [
+    "const payload = ;",
+    "\\u0065val(payload);",
+  ]);
+
+  expect(evaluatePolicy(report, { policy: PolicyName.Standard }).status).toBe(
+    ScanStatus.Fail,
+  );
+});
+
+test("JavaScript AST rule still analyzes the program recovered around a syntax error", async () => {
+  const findings = await scanJsTsAstFindings("recovered.js", [
+    "return;",
+    "\\u0065val(payload);",
+  ]);
+
+  expect(findings).toEqual(["1:JSA10", "2:JSA1"]);
 });
